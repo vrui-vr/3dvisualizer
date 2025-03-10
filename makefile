@@ -59,6 +59,7 @@ MODULE_NAMES = SphericalASCIIFile \
                CitcomtVectorFile \
                StructuredHexahedralTecplotASCIIFile \
                UnstructuredHexahedralTecplotASCIIFile \
+               UnstructuredHexahedralVTKXML \
                ImageStack \
                DicomImageStack \
                MultiChannelImageStack \
@@ -96,6 +97,8 @@ UNSUPPORTED_MODULE_NAMES = AvsUcdAsciiFile \
 # other. The value should be identical to the major.minor version
 # number found in VERSION in the root package directory.
 PACKAGE_VERSION = 1.19
+MAJORLIBVERSION = 1
+MINORLIBVERSION = 19
 PACKAGE_NAME = 3DVisualizer-$(PACKAGE_VERSION)
 
 # Set up the source directory structure
@@ -125,7 +128,7 @@ EXTRACINCLUDEFLAGS += -I$(PACKAGEROOT)
 # Set destination directory for libraries and plugins:
 LIBDESTDIR := $(PACKAGEROOT)/$(MYLIBEXT)
 MODULESDIREXT = Modules
-MODULESDESTDIR := $(LIBDESTDIR)/$(MODULESDIREXT)
+MODULESDESTDIR := $(PACKAGEROOT)/$(PLUGINDIR)/$(MODULESDIREXT)
 MODULENAME = $(MODULESDESTDIR)/lib$(1).$(PLUGINFILEEXT)
 
 ifneq ($(HAVE_COLLABORATION),0)
@@ -141,19 +144,23 @@ endif
 # Set up installation directory structure:
 LIBINSTALLDIR = $(INSTALLDIR)/$(MYLIBEXT)
 EXECUTABLEINSTALLDIR = $(INSTALLDIR)/$(EXEDIR)
-MODULESINSTALLDIR_DEBUG = $(INSTALLDIR)/$(PLUGINDIR_DEBUG)/$(MODULESDIREXT)
-MODULESINSTALLDIR_RELEASE = $(INSTALLDIR)/$(PLUGINDIR_RELEASE)/$(MODULESDIREXT)
+ifeq ($(INSTALLDIR),$(PWD))
+  MODULESINSTALLDIR_DEBUG = $(INSTALLDIR)/$(PLUGINDIR_DEBUG)/$(MODULESDIREXT)
+  MODULESINSTALLDIR_RELEASE = $(INSTALLDIR)/$(PLUGINDIR_RELEASE)/$(MODULESDIREXT)
+  SHAREINSTALLDIR = $(INSTALLDIR)/$(RESOURCEDIR)
+else ifneq ($(findstring $(PACKAGE_NAME),$(INSTALLDIR)),)
+  MODULESINSTALLDIR_DEBUG = $(INSTALLDIR)/$(PLUGINDIR_DEBUG)/$(MODULESDIREXT)
+  MODULESINSTALLDIR_RELEASE = $(INSTALLDIR)/$(PLUGINDIR_RELEASE)/$(MODULESDIREXT)
+  SHAREINSTALLDIR = $(INSTALLDIR)/$(RESOURCEDIR)
+else
+  MODULESINSTALLDIR_DEBUG = $(INSTALLDIR)/$(PLUGINDIR_DEBUG)/$(PACKAGE_NAME)/$(MODULESDIREXT)
+  MODULESINSTALLDIR_RELEASE = $(INSTALLDIR)/$(PLUGINDIR_RELEASE)/$(PACKAGE_NAME)/$(MODULESDIREXT)
+	SHAREINSTALLDIR = $(INSTALLDIR)/$(RESOURCEDIR)/$(PACKAGE_NAME)
+endif
 ifdef DEBUG
   MODULESINSTALLDIR = $(MODULESINSTALLDIR_DEBUG)
 else
   MODULESINSTALLDIR = $(MODULESINSTALLDIR_RELEASE)
-endif
-ifeq ($(INSTALLDIR),$(PWD))
-  SHAREINSTALLDIR = $(INSTALLDIR)/$(RESOURCEDIR)
-else ifneq ($(findstring $(PACKAGE_NAME),$(INSTALLDIR)),)
-  SHAREINSTALLDIR = $(INSTALLDIR)/$(RESOURCEDIR)
-else
-	SHAREINSTALLDIR = $(INSTALLDIR)/$(RESOURCEDIR)/$(PACKAGE_NAME)
 endif
 
 ########################################################################
@@ -227,8 +234,8 @@ $(DEPDIR)/Configure-Package: $(DEPDIR)/Configure-Begin
 	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_BASEDIR,$(INSTALLDIR))
 	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_RESOURCEDIR,$(SHAREINSTALLDIR))
 	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_SHADERDIR,$(SHAREINSTALLDIR)/Shaders)
-	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_MODULEDIR_DEBUG,$(PLUGININSTALLDIR_DEBUG))
-	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_MODULEDIR_RELEASE,$(PLUGININSTALLDIR_RELEASE))
+	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_MODULEDIR_DEBUG,$(MODULESINSTALLDIR_DEBUG))
+	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_MODULEDIR_RELEASE,$(MODULESINSTALLDIR_RELEASE))
 	@$(call CONFIG_SETVAR,Config.h.temp,VISUALIZATION_CONFIG_USE_SHADERS,$(USE_SHADERS))
 	@$(call CONFIG_SETVAR,Config.h.temp,VISUALIZATION_CONFIG_USE_COLLABORATION,$(HAVE_COLLABORATION))
 	@if ! diff -qN Config.h.temp Config.h > /dev/null ; then cp Config.h.temp Config.h ; fi
@@ -240,8 +247,9 @@ $(DEPDIR)/Configure-Install: $(DEPDIR)/Configure-Package
 	@echo "Installation directory: $(INSTALLDIR)"
 	@echo "Library directory: $(LIBINSTALLDIR)"
 	@echo "Executable directory: $(EXECUTABLEINSTALLDIR)"
-	@echo "Plug-in module directory: $(PLUGININSTALLDIR)"
+	@echo "Plug-in module directory: $(MODULESINSTALLDIR)"
 	@echo "Resource directory: $(SHAREINSTALLDIR)"
+	@echo "Shader directory: $(SHAREINSTALLDIR)/Shaders"
 	@touch $(DEPDIR)/Configure-Install
 
 $(DEPDIR)/Configure-End: $(DEPDIR)/Configure-Install
@@ -382,7 +390,7 @@ ifneq ($(USE_COLLABORATION),0)
 $(call MODULENAME,%): PACKAGES += MYCOLLABORATION2CLIENT
 endif
 $(call MODULENAME,%): $(call MODULEOBJNAMES,%.cpp) | $(call LIBRARYNAME,libVisualizer)
-	@mkdir -p $(PLUGINDESTDIR)
+	@mkdir -p $(MODULESDESTDIR)
 ifdef SHOWCOMMAND
 	$(CCOMP) $(PLUGINLINKFLAGS) -o $@ $^ $(PLUGINLFLAGS)
 else
@@ -467,9 +475,9 @@ install: $(ALL)
 	@install -d $(EXECUTABLEINSTALLDIR)
 	@install $(EXECUTABLES) $(EXECUTABLEINSTALLDIR)
 # Install all plug-ins in PLUGININSTALLDIR:
-	@echo Installing plug-ins in $(PLUGININSTALLDIR)...
-	@install -d $(PLUGININSTALLDIR)
-	@install $(MODULES) $(PLUGININSTALLDIR)
+	@echo Installing plug-ins in $(MODULESINSTALLDIR)...
+	@install -d $(MODULESINSTALLDIR)
+	@install $(MODULES) $(MODULESINSTALLDIR)
 # Install all shared files in SHAREINSTALLDIR:
 	@echo Installing shared files in $(SHAREINSTALLDIR)...
 	@install -d $(SHAREINSTALLDIR)
