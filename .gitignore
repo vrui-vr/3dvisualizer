@@ -1,5 +1,7 @@
 Config.h
-bin/
 d/
 o/
+lib/
+lib64/
+bin/
 Make.sh
