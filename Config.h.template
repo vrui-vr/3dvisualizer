@@ -1,0 +1,42 @@
+/***********************************************************************
+Config.h - Configuration header for 3D Data Visualizer.
+Copyright (c) 2020-2025 Oliver Kreylos
+
+This file is part of the 3D Data Visualizer (Visualizer).
+
+The 3D Data Visualizer is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as published
+by the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+The 3D Data Visualizer is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with the 3D Data Visualizer; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+***********************************************************************/
+
+#ifndef VISUALIZATION_CONFIG_INCLUDED
+#define VISUALIZATION_CONFIG_INCLUDED
+
+#define VISUALIZATION_CONFIG_BASEDIR "/usr/local/3DVisualizer-1.19"
+
+#define VISUALIZATION_CONFIG_SHADERDIR "/usr/local/share/3DVisualizer-1.19/Shaders"
+#define VISUALIZATION_CONFIG_RESOURCEDIR "/usr/local/share/3DVisualizer-1.19"
+
+#define VISUALIZATION_CONFIG_MODULEDIR_DEBUG "/usr/local/lib64/debug/3DVisualizer-1.19/Modules"
+#define VISUALIZATION_CONFIG_MODULEDIR_RELEASE "/usr/local/lib64/3DVisualizer-1.19/Modules"
+#ifdef DEBUG
+	#define VISUALIZATION_CONFIG_MODULEDIR VISUALIZATION_CONFIG_MODULEDIR_DEBUG
+#else
+	#define VISUALIZATION_CONFIG_MODULEDIR VISUALIZATION_CONFIG_MODULEDIR_RELEASE
+#endif
+#define VISUALIZATION_CONFIG_MODULENAMETEMPLATE VISUALIZATION_CONFIG_MODULEDIR "/lib%s.so"
+
+#define VISUALIZATION_CONFIG_USE_SHADERS 1
+#define VISUALIZATION_CONFIG_USE_COLLABORATION 0
+
+#endif

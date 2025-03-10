@@ -1,0 +1,144 @@
+/***********************************************************************
+Isosurface - Wrapper class for isosurfaces as visualization elements.
+Part of the wrapper layer of the templatized visualization
+components.
+Copyright (c) 2005-2023 Oliver Kreylos
+
+This file is part of the 3D Data Visualizer (Visualizer).
+
+The 3D Data Visualizer is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as published
+by the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+The 3D Data Visualizer is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with the 3D Data Visualizer; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+***********************************************************************/
+
+#define VISUALIZATION_WRAPPERS_ISOSURFACE_IMPLEMENTATION
+
+#include <Wrappers/Isosurface.h>
+
+#include <GL/gl.h>
+#include <GL/GLMaterialTemplates.h>
+#include <SceneGraph/GLRenderState.h>
+
+#include <Abstract/VariableManager.h>
+#if VISUALIZATION_CONFIG_USE_SHADERS
+#include <TwoSidedSurfaceShader.h>
+#endif
+
+namespace Visualization {
+
+namespace Wrappers {
+
+/***************************
+Methods of class Isosurface:
+***************************/
+
+template <class DataSetWrapperParam>
+inline
+Isosurface<DataSetWrapperParam>::Isosurface(
+	Visualization::Abstract::VariableManager* sVariableManager,
+	Visualization::Abstract::Parameters* sParameters,
+	int sScalarVariableIndex,
+	typename Isosurface<DataSetWrapperParam>::VScalar sIsovalue,
+	Cluster::MulticastPipe* pipe)
+	:Visualization::Abstract::Element(sVariableManager,sParameters),
+	 scalarVariableIndex(sScalarVariableIndex),
+	 isovalue(sIsovalue),
+	 #if VISUALIZATION_CONFIG_USE_SHADERS
+	 shader(0),
+	 #endif
+	 surface(pipe)
+	{
+	/* Set the render pass mask: */
+	passMask=SceneGraph::GraphNode::GLRenderPass;
+	
+	#if VISUALIZATION_CONFIG_USE_SHADERS
+	/* Acquire the shader: */
+	shader=TwoSidedSurfaceShader::acquireShader();
+	#endif
+	}
+
+template <class DataSetWrapperParam>
+inline
+Isosurface<DataSetWrapperParam>::~Isosurface(
+	void)
+	{
+	#if VISUALIZATION_CONFIG_USE_SHADERS
+	/* Release the shader: */
+	TwoSidedSurfaceShader::releaseShader(shader);
+	#endif
+	}
+
+template <class DataSetWrapperParam>
+inline
+const char*
+Isosurface<DataSetWrapperParam>::getClassName(
+	void) const
+	{
+	return "3DVisualizer::Isosurface";
+	}
+
+template <class DataSetWrapperParam>
+inline
+void
+Isosurface<DataSetWrapperParam>::glRenderAction(
+	SceneGraph::GLRenderState& renderState) const
+	{
+	/* Set up OpenGL state for isosurface rendering: */
+	renderState.setFrontFace(GL_CCW);
+	renderState.disableCulling();
+	#if VISUALIZATION_CONFIG_USE_SHADERS
+	if(shader!=0)
+		{
+		/* Enable the shader: */
+		shader->set(renderState);
+		}
+	else
+	#endif
+		{
+		renderState.enableMaterials();
+		renderState.setTwoSidedLighting(true);
+		renderState.disableTextures();
+		}
+	
+	/* Set the isosurface material properties: */
+	renderState.setColorMaterial(false);
+	glMaterialAmbientAndDiffuse(GLMaterialEnums::FRONT_AND_BACK,(*variableManager->getColorMap(scalarVariableIndex))(isovalue));
+	glMaterialSpecular(GLMaterialEnums::FRONT_AND_BACK,GLColor<GLfloat,4>(0.6f,0.6f,0.6f));
+	glMaterialShininess(GLMaterialEnums::FRONT_AND_BACK,25.0f);
+	
+	/* Render the surface representation: */
+	renderState.uploadModelview();
+	surface.glRenderAction(renderState);
+	}
+
+template <class DataSetWrapperParam>
+inline
+std::string
+Isosurface<DataSetWrapperParam>::getName(
+	void) const
+	{
+	return "Isosurface";
+	}
+
+template <class DataSetWrapperParam>
+inline
+size_t
+Isosurface<DataSetWrapperParam>::getSize(
+	void) const
+	{
+	return surface.getNumTriangles();
+	}
+
+}
+
+}
