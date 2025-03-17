@@ -122,29 +122,16 @@ else
   HAVE_COLLABORATION = 0
 endif
 
-# Add base directory to include path:
-EXTRACINCLUDEFLAGS += -I$(PACKAGEROOT)
-
 # Set destination directory for libraries and plugins:
 LIBDESTDIR := $(PACKAGEROOT)/$(MYLIBEXT)
 MODULESDIREXT = Modules
 MODULESDESTDIR := $(PACKAGEROOT)/$(PLUGINDIR)/$(MODULESDIREXT)
 MODULENAME = $(MODULESDESTDIR)/lib$(1).$(PLUGINFILEEXT)
 
-ifneq ($(HAVE_COLLABORATION),0)
-  COLLABORATIONPLUGINDESTDIR := $(LIBDESTDIR)/CollaborationPlugins
-  
-  COLLABORATIONPLUGINNAME = $(COLLABORATIONPLUGINDESTDIR)/lib$(1).$(PLUGINFILEEXT)
-  
-  # Collaboration plug-ins are installed into Vrui's plug-in
-  # installation directory, not 3D Visualizer's:
-  COLLABORATIONPLUGININSTALLDIR := $(COLLABORATIONPLUGINS_LIBDIR)
-endif
-
 # Set up installation directory structure:
 LIBINSTALLDIR = $(INSTALLDIR)/$(MYLIBEXT)
 EXECUTABLEINSTALLDIR = $(INSTALLDIR)/$(EXEDIR)
-ifeq ($(INSTALLDIR),$(PWD))
+ifeq ($(INSTALLDIR),$(PACKAGEROOT))
   MODULESINSTALLDIR_DEBUG = $(INSTALLDIR)/$(PLUGINDIR_DEBUG)/$(MODULESDIREXT)
   MODULESINSTALLDIR_RELEASE = $(INSTALLDIR)/$(PLUGINDIR_RELEASE)/$(MODULESDIREXT)
   SHAREINSTALLDIR = $(INSTALLDIR)/$(RESOURCEDIR)
@@ -167,12 +154,14 @@ endif
 # Specify additional compiler and linker flags
 ########################################################################
 
+# Add base directory to include path:
+EXTRACINCLUDEFLAGS += -I$(PACKAGEROOT)
+
 CFLAGS += -Wall -pedantic
 
 ########################################################################
-# List packages used by this project
-# (Supported packages can be found in
-# $(VRUI_MAKEDIR)/BuildRoot/Packages)
+# List common packages used by all components of this project
+# (Supported packages can be found in $(VRUI_MAKEDIR)/Packages.*)
 ########################################################################
 
 PACKAGES = MYGEOMETRY MYMATH MYCLUSTER MYIO MYTHREADS MYMISC
@@ -193,9 +182,10 @@ EXECUTABLES += $(EXEDIR)/3DVisualizer
 MODULES += $(MODULE_NAMES:%=$(call MODULENAME,%))
 
 ifneq ($(HAVE_COLLABORATION),0)
+  # Build the shared visualization server-side collaboration plug-in
+  SHAREDVISUALIZATION_NAME = SharedVisualization
   SHAREDVISUALIZATION_VERSION = 5
-  COLLABORATIONPLUGIN_NAMES = SharedVisualization.$(SHAREDVISUALIZATION_VERSION)-Server
-  COLLABORATIONPLUGINS = $(COLLABORATIONPLUGIN_NAMES:%=$(call COLLABORATIONPLUGINNAME,%))
+  COLLABORATIONPLUGINS += $(call COLLABORATIONPLUGIN_SERVER_TARGET,SHAREDVISUALIZATION)
 endif
 
 ALL = $(LIBRARIES) $(EXECUTABLES) $(MODULES) $(COLLABORATIONPLUGINS)
@@ -224,7 +214,6 @@ else
 endif
 ifneq ($(HAVE_COLLABORATION),0)
 	@echo "Collaborative visualization enabled"
-	@echo "  Run 'make plugins-install' to install collaborative visualization server plug-in"
 endif
 	@echo "Selected modules: $(MODULE_NAMES)"
 	@touch $(DEPDIR)/Configure-Begin
@@ -243,7 +232,7 @@ $(DEPDIR)/Configure-Package: $(DEPDIR)/Configure-Begin
 	@touch $(DEPDIR)/Configure-Package
 
 $(DEPDIR)/Configure-Install: $(DEPDIR)/Configure-Package
-	@echo "---- $(DISPLAYNAME) installation configuration ----"
+	@echo "---- 3D Visualizer installation configuration ----"
 	@echo "Installation directory: $(INSTALLDIR)"
 	@echo "Library directory: $(LIBINSTALLDIR)"
 	@echo "Executable directory: $(EXECUTABLEINSTALLDIR)"
@@ -266,14 +255,11 @@ $(DEPDIR)/config: $(DEPDIR)/Configure-End
 .PHONY: extraclean
 extraclean:
 	-rm -f $(MODULE_NAMES:%=$(call MODULENAME,%))
-ifneq ($(USE_COLLABORATION),0)
-	-rm -f $(COLLABORATIONPLUGIN_NAMES:%=$(call COLLABORATIONPLUGINNAME,%))
-endif
 
 .PHONY: extrasqueakyclean
 extrasqueakyclean:
 	-rm -f $(ALL)
-	-rm -rf $(PACKAGEROOT)/$(LIBEXT)
+	-rm -rf $(LIBEXT)
 
 # Include basic makefile
 include $(VRUI_MAKEDIR)/BasicMakefile
@@ -441,17 +427,11 @@ $(call MODULENAME,UnstructuredHexahedralVTKXML): $(call MODULEOBJNAMES,VTKCDataP
 SHAREDVISUALIZATIONSERVER_SOURCES = SharedVisualizationProtocol.cpp \
                                     SharedVisualizationServer.cpp
 
-$(call COLLABORATIONPLUGINNAME,SharedVisualization.$(SHAREDVISUALIZATION_VERSION)-Server): PACKAGES = MYCOLLABORATION2SERVER MYMISC
-$(call COLLABORATIONPLUGINNAME,SharedVisualization.$(SHAREDVISUALIZATION_VERSION)-Server): $(call PLUGINOBJNAMES,$(SHAREDVISUALIZATIONSERVER_SOURCES))
-	@mkdir -p $(COLLABORATIONPLUGINDESTDIR)
-ifdef SHOWCOMMAND
-	$(CCOMP) $(PLUGINLINKFLAGS) -o $@ $^ $(PLUGINLFLAGS)
-else
-	@echo Linking $@...
-	@$(CCOMP) $(PLUGINLINKFLAGS) -o $@ $^ $(PLUGINLFLAGS)
-endif
+$(call PLUGINOBJNAMES,$(SHAREDVISUALIZATIONSERVER_SOURCES)): | $(DEPDIR)/config
+
+$(call COLLABORATIONPLUGIN_SERVER_TARGET,SHAREDVISUALIZATION): $(call PLUGINOBJNAMES,$(SHAREDVISUALIZATIONSERVER_SOURCES))
 .PHONY: SharedVisualizationServer
-SharedVisualizationServer: $(call COLLABORATIONPLUGINNAME,SharedVisualization.$(SHAREDVISUALIZATION_VERSION)-Server)
+SharedVisualizationServer: $(call COLLABORATIONPLUGIN_SERVER_TARGET,SHAREDVISUALIZATION)
 
 ########################################################################
 # Specify installation rules
