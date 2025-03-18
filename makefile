@@ -25,7 +25,7 @@
 # matches the default Vrui installation; if Vrui's installation
 # directory was changed during Vrui's installation, the directory below
 # must be adapted.
-VRUI_MAKEDIR := /usr/local/share/Vrui-12.3/make
+VRUI_MAKEDIR := /usr/local/share/Vrui-13.0/make
 
 # Base installation directory for 3D Visualizer and its module
 # plug-ins. The module plug-ins cannot be moved from this location
@@ -92,19 +92,15 @@ UNSUPPORTED_MODULE_NAMES = AvsUcdAsciiFile \
 # Everything below here should not have to be changed
 ########################################################################
 
+PROJECT_NAME = 3DVisualizer
+PROJECT_DISPLAYNAME = 3D Visualizer
+
 # Version number for installation subdirectories. This is used to keep
 # subsequent release versions of 3D Visualizer from clobbering each
 # other. The value should be identical to the major.minor version
 # number found in VERSION in the root package directory.
-PACKAGE_VERSION = 1.19
-MAJORLIBVERSION = 1
-MINORLIBVERSION = 19
-PACKAGE_NAME = 3DVisualizer-$(PACKAGE_VERSION)
-
-# Set up the source directory structure
-PACKAGEROOT := $(shell pwd)
-RESOURCEDIR = share
-SHADERDIR = $(RESOURCEDIR)/Shaders
+PROJECT_MAJOR=1
+PROJECT_MINOR=20
 
 # Include definitions for the system environment and system-provided
 # packages
@@ -122,27 +118,21 @@ else
   HAVE_COLLABORATION = 0
 endif
 
-# Set destination directory for libraries and plugins:
-LIBDESTDIR := $(PACKAGEROOT)/$(MYLIBEXT)
+# Set up visualization plug-ins
 MODULESDIREXT = Modules
-MODULESDESTDIR := $(PACKAGEROOT)/$(PLUGINDIR)/$(MODULESDIREXT)
-MODULENAME = $(MODULESDESTDIR)/lib$(1).$(PLUGINFILEEXT)
+PROJECT_MODULESDIR = $(PROJECT_ROOT)/$(PLUGINDIR)/$(MODULESDIREXT)
+MODULENAME = $(PROJECT_MODULESDIR)/lib$(1).$(PLUGINFILEEXT)
 
 # Set up installation directory structure:
-LIBINSTALLDIR = $(INSTALLDIR)/$(MYLIBEXT)
-EXECUTABLEINSTALLDIR = $(INSTALLDIR)/$(EXEDIR)
-ifeq ($(INSTALLDIR),$(PACKAGEROOT))
+ifeq ($(INSTALLDIR),$(PROJECT_ROOT))
   MODULESINSTALLDIR_DEBUG = $(INSTALLDIR)/$(PLUGINDIR_DEBUG)/$(MODULESDIREXT)
   MODULESINSTALLDIR_RELEASE = $(INSTALLDIR)/$(PLUGINDIR_RELEASE)/$(MODULESDIREXT)
-  SHAREINSTALLDIR = $(INSTALLDIR)/$(RESOURCEDIR)
-else ifneq ($(findstring $(PACKAGE_NAME),$(INSTALLDIR)),)
+else ifneq ($(findstring $(PROJECT_FULLNAME),$(INSTALLDIR)),)
   MODULESINSTALLDIR_DEBUG = $(INSTALLDIR)/$(PLUGINDIR_DEBUG)/$(MODULESDIREXT)
   MODULESINSTALLDIR_RELEASE = $(INSTALLDIR)/$(PLUGINDIR_RELEASE)/$(MODULESDIREXT)
-  SHAREINSTALLDIR = $(INSTALLDIR)/$(RESOURCEDIR)
 else
-  MODULESINSTALLDIR_DEBUG = $(INSTALLDIR)/$(PLUGINDIR_DEBUG)/$(PACKAGE_NAME)/$(MODULESDIREXT)
-  MODULESINSTALLDIR_RELEASE = $(INSTALLDIR)/$(PLUGINDIR_RELEASE)/$(PACKAGE_NAME)/$(MODULESDIREXT)
-	SHAREINSTALLDIR = $(INSTALLDIR)/$(RESOURCEDIR)/$(PACKAGE_NAME)
+  MODULESINSTALLDIR_DEBUG = $(INSTALLDIR)/$(PLUGINDIR_DEBUG)/$(PROJECT_FULLNAME)/$(MODULESDIREXT)
+  MODULESINSTALLDIR_RELEASE = $(INSTALLDIR)/$(PLUGINDIR_RELEASE)/$(PROJECT_FULLNAME)/$(MODULESDIREXT)
 endif
 ifdef DEBUG
   MODULESINSTALLDIR = $(MODULESINSTALLDIR_DEBUG)
@@ -155,7 +145,7 @@ endif
 ########################################################################
 
 # Add base directory to include path:
-EXTRACINCLUDEFLAGS += -I$(PACKAGEROOT)
+EXTRACINCLUDEFLAGS += -I$(PROJECT_ROOT)
 
 CFLAGS += -Wall -pedantic
 
@@ -206,7 +196,7 @@ config-invalidate:
 
 $(DEPDIR)/Configure-Begin:
 	@mkdir -p $(DEPDIR)
-	@echo "---- 3D Visualizer configuration options: ----"
+	@echo "---- $(PROJECT_FULLDISPLAYNAME) configuration options: ----"
 ifneq ($(USE_SHADERS),0)
 	@echo "Use of GLSL shaders enabled"
 else
@@ -232,7 +222,7 @@ $(DEPDIR)/Configure-Package: $(DEPDIR)/Configure-Begin
 	@touch $(DEPDIR)/Configure-Package
 
 $(DEPDIR)/Configure-Install: $(DEPDIR)/Configure-Package
-	@echo "---- 3D Visualizer installation configuration ----"
+	@echo "---- $(PROJECT_FULLDISPLAYNAME) installation configuration ----"
 	@echo "Installation directory: $(INSTALLDIR)"
 	@echo "Library directory: $(LIBINSTALLDIR)"
 	@echo "Executable directory: $(EXECUTABLEINSTALLDIR)"
@@ -242,7 +232,7 @@ $(DEPDIR)/Configure-Install: $(DEPDIR)/Configure-Package
 	@touch $(DEPDIR)/Configure-Install
 
 $(DEPDIR)/Configure-End: $(DEPDIR)/Configure-Install
-	@echo "---- End of $(DISPLAYNAME) configuration options ----"
+	@echo "---- End of $(PROJECT_FULLDISPLAYNAME) configuration options ----"
 	@touch $(DEPDIR)/Configure-End
 
 $(DEPDIR)/config: $(DEPDIR)/Configure-End
@@ -259,7 +249,6 @@ extraclean:
 .PHONY: extrasqueakyclean
 extrasqueakyclean:
 	-rm -f $(ALL)
-	-rm -rf $(LIBEXT)
 
 # Include basic makefile
 include $(VRUI_MAKEDIR)/BasicMakefile
@@ -319,7 +308,7 @@ $(call LIBRARYNAME,libVisualizer): $(call LIBOBJNAMES,$(LIBVISUALIZER_SOURCES))
 .PHONY: libVisualizer
 libVisualizer: $(call LIBRARYNAME,libVisualizer)
 
-LIBVISUALIZER_BASEDIR = $(PACKAGEROOT)
+LIBVISUALIZER_BASEDIR = $(PROJECT_ROOT)
 LIBVISUALIZER_DEPENDS = MYVRUI MYSCENEGRAPH MYGLMOTIF MYGLSUPPORT MYGLWRAPPERS MYGEOMETRY MYMATH MYIO MYPLUGINS MYTHREADS MYMISC
 LIBVISUALIZER_DEPENDS_INLINE = MYVRUI MYSCENEGRAPH MYGLMOTIF MYGLSUPPORT MYGLWRAPPERS MYGEOMETRY MYMATH MYMISC
 ifneq ($(HAVE_COLLABORATION),0)
@@ -376,7 +365,7 @@ ifneq ($(USE_COLLABORATION),0)
 $(call MODULENAME,%): PACKAGES += MYCOLLABORATION2CLIENT
 endif
 $(call MODULENAME,%): $(call MODULEOBJNAMES,%.cpp) | $(call LIBRARYNAME,libVisualizer)
-	@mkdir -p $(MODULESDESTDIR)
+	@mkdir -p $(PROJECT_MODULESDIR)
 ifdef SHOWCOMMAND
 	$(CCOMP) $(PLUGINLINKFLAGS) -o $@ $^ $(PLUGINLFLAGS)
 else
@@ -442,7 +431,7 @@ SharedVisualizationServer: $(call COLLABORATIONPLUGIN_SERVER_TARGET,SHAREDVISUAL
 #
 
 install: $(ALL)
-	@echo Installing $(DISPLAYNAME) in $(INSTALLDIR)...
+	@echo Installing $(PROJECT_FULLDISPLAYNAME) in $(INSTALLDIR)...
 	@install -d $(INSTALLDIR)
 # Install all library files in LIBINSTALLDIR:
 	@echo Installing libraries in $(LIBINSTALLDIR)...
@@ -461,12 +450,12 @@ install: $(ALL)
 # Install all shared files in SHAREINSTALLDIR:
 	@echo Installing shared files in $(SHAREINSTALLDIR)...
 	@install -d $(SHAREINSTALLDIR)
-	@install $(RESOURCEDIR)/EarthTopography.png $(RESOURCEDIR)/EarthTopography.ppm $(SHAREINSTALLDIR)
+	@install $(PROJECT_SHAREDIR)/EarthTopography.png $(PROJECT_SHAREDIR)/EarthTopography.ppm $(SHAREINSTALLDIR)
 ifneq ($(USE_SHADERS),0)
 	@install -d $(SHAREINSTALLDIR)/Shaders
-	@install $(LIBVISUALIZER_SHADERS:%=$(RESOURCEDIR)/Shaders/%) $(SHAREINSTALLDIR)/Shaders
+	@install $(LIBVISUALIZER_SHADERS:%=$(PROJECT_SHAREDIR)/Shaders/%) $(SHAREINSTALLDIR)/Shaders
 endif
 ifneq ($(HAVE_COLLABORATION),0)
-	@echo Installing 3D Visualizer collaboration server plugin in $(COLLABORATIONPLUGININSTALLDIR)
+	@echo Installing $(PROJECT_FULLDISPLAYNAME) collaboration server plugin in $(COLLABORATIONPLUGININSTALLDIR)
 	@install $(COLLABORATIONPLUGINS) $(COLLABORATIONPLUGININSTALLDIR)
 endif

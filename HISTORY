@@ -166,3 +166,9 @@
 - Adapted Concrete::EarthRenderer class to scene graph rendering
   approach.
 - Removed superfluous code from Visualizer::display method.
+
+3D Visualizer 1.20:
+- Bumped required Vrui version number to 13.0-001.
+- Bumped required Collaboration Infrastructure version to 10.2.
+- Adapted to new Vrui project build system and collaboration
+  infrastructure build system.
