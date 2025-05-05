@@ -25,18 +25,18 @@
 # matches the default Vrui installation; if Vrui's installation
 # directory was changed during Vrui's installation, the directory below
 # must be adapted.
-VRUI_MAKEDIR := /usr/local/share/Vrui-13.0/make
+VRUI_MAKEDIR = /usr/local/share/Vrui-13.0/make
 
 # Base installation directory for 3D Visualizer and its module
 # plug-ins. The module plug-ins cannot be moved from this location
 # after installation, or 3D Visualizer will not find them. If this is
-# set to the default of $(PWD), 3D Visualizer does not have to be
-# installed to be run. 3D Visualizer's executable, plug-ins, and
+# set to the default of $(PROJECT_ROOT), 3D Visualizer does not have to
+# be installed to be run. 3D Visualizer's executable, plug-ins, and
 # resources will be installed in the bin, lib (or lib64), and share
 # directories underneath the given base directory, respectively.
 # Important note: Do not use ~ as an abbreviation for the user's home
 # directory here; use $(HOME) instead.
-INSTALLDIR := $(shell pwd)
+INSTALLDIR = $(PROJECT_ROOT)
 
 # Flag whether to use GLSL shaders instead of fixed OpenGL functionality
 # for some visualization algorithms, especially volume rendering. This
@@ -100,14 +100,14 @@ PROJECT_DISPLAYNAME = 3D Visualizer
 # other. The value should be identical to the major.minor version
 # number found in VERSION in the root package directory.
 PROJECT_MAJOR=1
-PROJECT_MINOR=20
+PROJECT_MINOR=21
 
 # Include definitions for the system environment and system-provided
 # packages
 include $(VRUI_MAKEDIR)/SystemDefinitions
 include $(VRUI_MAKEDIR)/Packages.System
-include $(VRUI_MAKEDIR)/Configuration.Vrui
 include $(VRUI_MAKEDIR)/Packages.Vrui
+include $(VRUI_MAKEDIR)/Configuration.Vrui
 
 # Check if the Vrui Collaboration Infrastructure is installed
 -include $(VRUI_MAKEDIR)/Configuration.Collaboration
