@@ -160,10 +160,13 @@ PACKAGES = MYGEOMETRY MYMATH MYCLUSTER MYIO MYTHREADS MYMISC
 # Specify all final targets
 ########################################################################
 
+CONFIGFILES = 
 LIBRARIES = 
 EXECUTABLES = 
 MODULES = 
 COLLABORATIONPLUGINS = 
+
+CONFIGFILES += Config.h
 
 LIBRARIES += $(call LIBRARYNAME,libVisualizer)
 
@@ -197,6 +200,9 @@ config-invalidate:
 $(DEPDIR)/Configure-Begin:
 	@mkdir -p $(DEPDIR)
 	@echo "---- $(PROJECT_FULLDISPLAYNAME) configuration options: ----"
+	@touch $(DEPDIR)/Configure-Begin
+
+$(DEPDIR)/Configure-Package: $(DEPDIR)/Configure-Begin
 ifneq ($(USE_SHADERS),0)
 	@echo "Use of GLSL shaders enabled"
 else
@@ -204,21 +210,10 @@ else
 endif
 ifneq ($(HAVE_COLLABORATION),0)
 	@echo "Collaborative visualization enabled"
+else
+	@echo "Collaborative visualization disabled"
 endif
 	@echo "Selected modules: $(MODULE_NAMES)"
-	@touch $(DEPDIR)/Configure-Begin
-
-$(DEPDIR)/Configure-Package: $(DEPDIR)/Configure-Begin
-	@cp Config.h.template Config.h.temp
-	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_BASEDIR,$(INSTALLDIR))
-	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_RESOURCEDIR,$(SHAREINSTALLDIR))
-	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_SHADERDIR,$(SHAREINSTALLDIR)/Shaders)
-	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_MODULEDIR_DEBUG,$(MODULESINSTALLDIR_DEBUG))
-	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_MODULEDIR_RELEASE,$(MODULESINSTALLDIR_RELEASE))
-	@$(call CONFIG_SETVAR,Config.h.temp,VISUALIZATION_CONFIG_USE_SHADERS,$(USE_SHADERS))
-	@$(call CONFIG_SETVAR,Config.h.temp,VISUALIZATION_CONFIG_USE_COLLABORATION,$(HAVE_COLLABORATION))
-	@if ! diff -qN Config.h.temp Config.h > /dev/null ; then cp Config.h.temp Config.h ; fi
-	@rm Config.h.temp
 	@touch $(DEPDIR)/Configure-Package
 
 $(DEPDIR)/Configure-Install: $(DEPDIR)/Configure-Package
@@ -235,7 +230,20 @@ $(DEPDIR)/Configure-End: $(DEPDIR)/Configure-Install
 	@echo "---- End of $(PROJECT_FULLDISPLAYNAME) configuration options ----"
 	@touch $(DEPDIR)/Configure-End
 
-$(DEPDIR)/config: $(DEPDIR)/Configure-End
+Config.h: | $(DEPDIR)/Configure-End
+	@echo "Creating Config.h configuration file"
+	@cp Config.h.template Config.h.temp
+	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_BASEDIR,$(INSTALLDIR))
+	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_RESOURCEDIR,$(SHAREINSTALLDIR))
+	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_SHADERDIR,$(SHAREINSTALLDIR)/Shaders)
+	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_MODULEDIR_DEBUG,$(MODULESINSTALLDIR_DEBUG))
+	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,VISUALIZATION_CONFIG_MODULEDIR_RELEASE,$(MODULESINSTALLDIR_RELEASE))
+	@$(call CONFIG_SETVAR,Config.h.temp,VISUALIZATION_CONFIG_USE_SHADERS,$(USE_SHADERS))
+	@$(call CONFIG_SETVAR,Config.h.temp,VISUALIZATION_CONFIG_USE_COLLABORATION,$(HAVE_COLLABORATION))
+	@if ! diff -qN Config.h.temp Config.h > /dev/null ; then cp Config.h.temp Config.h ; fi
+	@rm Config.h.temp
+
+$(DEPDIR)/config: $(DEPDIR)/Configure-End $(CONFIGFILES)
 	@touch $(DEPDIR)/config
 
 ########################################################################
@@ -248,7 +256,7 @@ extraclean:
 
 .PHONY: extrasqueakyclean
 extrasqueakyclean:
-	-rm -f $(ALL)
+	-rm $(CONFIGFILES)
 
 # Include basic makefile
 include $(VRUI_MAKEDIR)/BasicMakefile
@@ -455,7 +463,11 @@ ifneq ($(USE_SHADERS),0)
 	@install -d $(SHAREINSTALLDIR)/Shaders
 	@install $(LIBVISUALIZER_SHADERS:%=$(PROJECT_SHAREDIR)/Shaders/%) $(SHAREINSTALLDIR)/Shaders
 endif
+
+installplugins: $(COLLABORATIONPLUGINS)
 ifneq ($(HAVE_COLLABORATION),0)
-	@echo Installing $(PROJECT_FULLDISPLAYNAME) collaboration server plugin in $(COLLABORATIONPLUGININSTALLDIR)
-	@install $(COLLABORATIONPLUGINS) $(COLLABORATIONPLUGININSTALLDIR)
+	@echo Installing $(PROJECT_DISPLAYNAME)\'s collaboration plug-ins in $(COLLABORATIONPLUGINS_LIBDIR)...
+	@install $(COLLABORATIONPLUGINS) $(COLLABORATIONPLUGINS_LIBDIR)
+else
+	@echo "Collaborative visualization disabled; there are no collaboration plug-ins to install"
 endif

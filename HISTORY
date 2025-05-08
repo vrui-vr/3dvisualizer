@@ -175,3 +175,5 @@
 
 3D Visualizer 1.21:
 - Adapted top of makefile to improved Vrui setup.
+- Change configuration section to create Config.h file at the end.
+- Add installplugins target for collaboration plug-ins.
