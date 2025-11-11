@@ -100,7 +100,7 @@ PROJECT_DISPLAYNAME = 3D Visualizer
 # other. The value should be identical to the major.minor version
 # number found in VERSION in the root package directory.
 PROJECT_MAJOR=1
-PROJECT_MINOR=21
+PROJECT_MINOR=22
 
 # Include definitions for the system environment and system-provided
 # packages
