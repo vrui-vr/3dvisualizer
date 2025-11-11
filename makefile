@@ -25,7 +25,7 @@
 # matches the default Vrui installation; if Vrui's installation
 # directory was changed during Vrui's installation, the directory below
 # must be adapted.
-VRUI_MAKEDIR = /usr/local/share/Vrui-13.0/make
+VRUI_MAKEDIR = /usr/local/share/Vrui-14.0/make
 
 # Base installation directory for 3D Visualizer and its module
 # plug-ins. The module plug-ins cannot be moved from this location
