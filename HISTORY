@@ -177,3 +177,5 @@
 - Bumped required Vrui version number to 14.0-001.
 - Bumped required Collaboration Infrastructure version to 10.3.
 - Adapted top of makefile to improved Vrui setup.
+- Change configuration section to create Config.h file at the end.
+- Add installplugins target for collaboration plug-ins.
