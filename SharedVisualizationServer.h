@@ -2,7 +2,7 @@
 SharedVisualizationServer - Server for collaborative data exploration in
 spatially distributed VR environments, implemented as a plug-in of the
 Vrui remote collaboration infrastructure.
-Copyright (c) 2009-2023 Oliver Kreylos
+Copyright (c) 2009-2025 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -66,6 +66,9 @@ class SharedVisualizationServer:public PluginServer,public SharedVisualizationPr
 		client->queueMessage(message.getBuffer());
 		}
 	MessageContinuation* connectRequestCallback(unsigned int messageId,unsigned int clientId,MessageContinuation* continuation);
+	
+	/* Command interface methods: */
+	void clearDataCommandCallback(const char* argumentBegin,const char* argumentEnd);
 	
 	/* Constructors and destructors: */
 	public:

@@ -2,7 +2,7 @@
 SharedVisualizationServer - Server for collaborative data exploration in
 spatially distributed VR environments, implemented as a plug-in of the
 Vrui remote collaboration infrastructure.
-Copyright (c) 2009-2023 Oliver Kreylos
+Copyright (c) 2009-2025 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -41,7 +41,8 @@ MessageContinuation* SharedVisualizationServer::connectRequestCallback(unsigned 
 	unsigned int clientNumScalarVariables=socket.read<VariableIndex>();
 	unsigned int clientNumVectorVariables=socket.read<VariableIndex>();
 	
-	bool compatible;
+	/* Check if the client's dataset is compatible with the one currently "held" on the server: */
+	bool compatible=false;
 	if(clientNumScalarVariables==numScalarVariables&&clientNumVectorVariables==numVectorVariables)
 		compatible=true;
 	else if(numScalarVariables==0&&numVectorVariables==0)
@@ -55,10 +56,6 @@ MessageContinuation* SharedVisualizationServer::connectRequestCallback(unsigned 
 		
 		compatible=true;
 		}
-	else
-		compatible=false;
-	
-	/* Check if the client is compatible: */
 	if(compatible)
 		{
 		/* Create a connect reply message: */
@@ -85,11 +82,26 @@ MessageContinuation* SharedVisualizationServer::connectRequestCallback(unsigned 
 	return 0;
 	}
 
+void SharedVisualizationServer::clearDataCommandCallback(const char* argumentBegin,const char* argumentEnd)
+	{
+	/* Release all color maps: */
+	for(unsigned int i=0;i<numScalarVariables;++i)
+		delete[] colorMaps[i];
+	delete[] colorMaps;
+	colorMaps=0;
+	
+	/* Reset the variable space: */
+	numScalarVariables=0;
+	numVectorVariables=0;
+	}
+
 SharedVisualizationServer::SharedVisualizationServer(Server* sServer)
 	:PluginServer(sServer),
 	 numScalarVariables(0),colorMaps(0),
 	 numVectorVariables(0)
 	{
+	/* Register pipe commands: */
+	server->getCommandDispatcher().addCommandCallback("3DVisualizer::clearData",Misc::CommandDispatcher::wrapMethod<SharedVisualizationServer,&SharedVisualizationServer::clearDataCommandCallback>,this,0,"Clears the dataset currently held by the server");
 	}
 
 SharedVisualizationServer::~SharedVisualizationServer(void)
@@ -98,6 +110,9 @@ SharedVisualizationServer::~SharedVisualizationServer(void)
 	for(unsigned int i=0;i<numScalarVariables;++i)
 		delete[] colorMaps[i];
 	delete[] colorMaps;
+	
+	/* Unregister pipe commands: */
+	server->getCommandDispatcher().removeCommandCallback("3DVisualizer::clearData");
 	}
 
 const char* SharedVisualizationServer::getName(void) const
