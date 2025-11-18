@@ -23,6 +23,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include "SharedVisualizationServer.h"
 
+#include <Collaboration2/MessageContinuation.h>
+
 namespace Collab {
 
 namespace Plugins {
@@ -82,11 +84,55 @@ MessageContinuation* SharedVisualizationServer::connectRequestCallback(unsigned 
 	return 0;
 	}
 
+MessageContinuation* SharedVisualizationServer::colorMapUpdatedRequestCallback(unsigned int messageId,unsigned int clientId,MessageContinuation* continuation)
+	{
+	/* Access the base client state object and its TCP socket: */
+	Server::Client* client=server->getClient(clientId);
+	NonBlockSocket& socket=client->getSocket();
+	
+	/* Check if this is the start of a new message: */
+	if(continuation==0)
+		{
+		/* Prepare to read the color map updated request message: */
+		continuation=protocolTypes.prepareReading(clientMessageTypes[ColorMapUpdatedRequest],new ColorMapUpdatedMsg);
+		}
+	
+	/* Continue reading the color map updated request message and check whether it's complete: */
+	if(protocolTypes.continueReading(socket,continuation))
+		{
+		/* Extract the connect reply message: */
+		ColorMapUpdatedMsg* msg=protocolTypes.getReadObject<ColorMapUpdatedMsg>(continuation);
+		
+		/* Update the stored color map: */
+		delete colorMaps[msg->scalarVariableIndex];
+		colorMaps[msg->scalarVariableIndex]=new ColorMap(msg->colorMap);
+		
+		/* Forward the new color map to all other clients: */
+		{
+		/* Create a message writer: */
+		MessageWriter message(MessageBuffer::create(serverMessageBase+ColorMapUpdatedNotification,protocolTypes.calcSize(serverMessageTypes[ColorMapUpdatedNotification],msg)));
+		
+		/* Write the message structure into the message: */
+		protocolTypes.write(serverMessageTypes[ColorMapUpdatedNotification],msg,message);
+		
+		/* Broadcast the update notification to all other clients: */
+		broadcastMessage(clientId,message.getBuffer());
+		}
+		
+		/* Delete the color map updated request message and the continuation object: */
+		delete msg;
+		delete continuation;
+		continuation=0;
+		}
+	
+	return continuation;
+	}
+
 void SharedVisualizationServer::clearDataCommandCallback(const char* argumentBegin,const char* argumentEnd)
 	{
 	/* Release all color maps: */
 	for(unsigned int i=0;i<numScalarVariables;++i)
-		delete[] colorMaps[i];
+		delete colorMaps[i];
 	delete[] colorMaps;
 	colorMaps=0;
 	
@@ -108,7 +154,7 @@ SharedVisualizationServer::~SharedVisualizationServer(void)
 	{
 	/* Release all color maps: */
 	for(unsigned int i=0;i<numScalarVariables;++i)
-		delete[] colorMaps[i];
+		delete colorMaps[i];
 	delete[] colorMaps;
 	
 	/* Unregister pipe commands: */
@@ -142,6 +188,7 @@ void SharedVisualizationServer::setMessageBases(unsigned int newClientMessageBas
 	
 	/* Register message handlers: */
 	server->setMessageHandler(clientMessageBase+ConnectRequest,Server::wrapMethod<SharedVisualizationServer,&SharedVisualizationServer::connectRequestCallback>,this,getClientMsgSize(ConnectRequest));
+	server->setMessageHandler(clientMessageBase+ColorMapUpdatedRequest,Server::wrapMethod<SharedVisualizationServer,&SharedVisualizationServer::colorMapUpdatedRequestCallback>,this,getClientMsgSize(ColorMapUpdatedRequest));
 	}
 
 void SharedVisualizationServer::start(void)
@@ -150,10 +197,14 @@ void SharedVisualizationServer::start(void)
 
 void SharedVisualizationServer::clientConnected(unsigned int clientId)
 	{
+	/* Add the new client to the list of clients using this protocol: */
+	addClientToList(clientId);
 	}
 
 void SharedVisualizationServer::clientDisconnected(unsigned int clientId)
 	{
+	/* Remove the client from the list of clients using this protocol: */
+	removeClientFromList(clientId);
 	}
 
 /***********************

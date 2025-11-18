@@ -1,7 +1,7 @@
 /***********************************************************************
 SharedVisualizationProtocol - Common interface between a shared
 visualization server and a shared visualization client.
-Copyright (c) 2009-2023 Oliver Kreylos
+Copyright (c) 2009-2025 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -42,6 +42,7 @@ class SharedVisualizationProtocol
 	enum ClientMessages // Enumerated type for protocol message IDs sent by clients
 		{
 		ConnectRequest=0,
+		ColorMapUpdatedRequest,
 		
 		NumClientMessages
 		};
@@ -101,7 +102,7 @@ class SharedVisualizationProtocol
 		Misc::Vector<ColorMapListEntry> colorMaps; // List of scalar variable color maps already defined on the server
 		};
 	
-	struct ColorMapUpdatedNotificationMsg
+	struct ColorMapUpdatedMsg
 		{
 		/* Elements: */
 		public:
@@ -111,7 +112,7 @@ class SharedVisualizationProtocol
 	
 	/* Elements: */
 	static const char* protocolName;
-	static const unsigned int protocolVersion=(5U<<16)+0U;
+	static const unsigned int protocolVersion=(6U<<16)+0U;
 	
 	/* Protocol data type declarations: */
 	DataType protocolTypes; // Definitions of data types used by the shared visualization protocol

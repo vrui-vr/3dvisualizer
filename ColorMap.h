@@ -1,7 +1,7 @@
 /***********************************************************************
 ColorMap - A widget to display color maps (one-dimensional transfer
 functions with RGB color and opacity).
-Copyright (c) 2005-2008 Oliver Kreylos
+Copyright (c) 2005-2025 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -26,6 +26,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <vector>
 #include <Misc/CallbackData.h>
 #include <Misc/CallbackList.h>
+#include <Misc/RGBA.h>
+#include <Misc/ColorMap.h>
 #include <GL/gl.h>
 #include <GL/GLColor.h>
 #include <GLMotif/Types.h>
@@ -40,20 +42,18 @@ class ColorMap:public Widget
 	{
 	/* Embedded classes: */
 	public:
-	typedef GLColor<GLfloat,4> ColorMapValue; // Type for colors with opacity values
+	typedef Misc::RGBA<float> ColorMapValue; // Type for colors with opacity values
 	typedef std::pair<double,double> ValueRange; // Type for ranges of scalar values
+	typedef Misc::ColorMap<ColorMapValue> Storage; // Type for storing color maps that are not currently interacted with
 	
 	enum ColorMapCreationType // Enumerated type for color map types
 		{
 		GREYSCALE,LUMINANCE,SATURATION,RAINBOW
 		};
 	
-	class Storage;
-	
 	class ControlPoint // class for color map control points
 		{
 		friend class ColorMap;
-		friend class Storage;
 		
 		/* Elements: */
 		private:
@@ -118,35 +118,6 @@ class ColorMap:public Widget
 		ColorMapChangedCallbackData(ColorMap* sColorMap)
 			:CallbackData(sColorMap)
 			{
-			}
-		};
-	
-	class Storage // Class to opaquely store and retrieve color maps
-		{
-		friend class ColorMap;
-		
-		/* Elements: */
-		private:
-		int numControlPoints; // Number of control points in the color map
-		double* values; // Array of control point mapping values
-		ColorMapValue* colors; // Array of control point colors
-		
-		/* Constructors and destructors: */
-		public:
-		Storage(void) // Creates an empty color map
-			:numControlPoints(0),
-			 values(0),colors(0)
-			{
-			}
-		private:
-		Storage(const ControlPoint* first); // Creates a color map from a list of control points
-		Storage(const Storage& source); // Prohibit copy constructor
-		Storage& operator=(const Storage& source); // Prohibit assignment operator
-		public:
-		~Storage(void) // Destroys a color map
-			{
-			delete[] values;
-			delete[] colors;
 			}
 		};
 	
@@ -224,7 +195,6 @@ class ColorMap:public Widget
 	Storage* getColorMap(void) const; // Returns a new storage object containing the current color map
 	void setColorMap(const Storage* newColorMap); // Sets the current color map from the storage object
 	void createColorMap(ColorMapCreationType colorMapType,const ValueRange& newValueRange); // Creates a default color map for the given value range
-	void createColorMap(const std::vector<ControlPoint>& controlPoints); // Creates color map from the given vector of control points; control point values must be monotonically increasing
 	void loadColorMap(const char* colorMapFileName,const ValueRange& newValueRange); // Loads a color map from the given color map file and adjusts it to the given value range (without changing mappings)
 	void saveColorMap(const char* colorMapFileName) const; // Saves color map to the given file
 	};

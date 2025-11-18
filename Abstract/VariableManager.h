@@ -1,7 +1,7 @@
 /***********************************************************************
 VariableManager - Helper class to manage the scalar and vector variables
 that can be extracted from a data set.
-Copyright (c) 2008-2023 Oliver Kreylos
+Copyright (c) 2008-2025 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef VISUALIZATION_ABSTRACT_VARIABLEMANAGER_INCLUDED
 #define VISUALIZATION_ABSTRACT_VARIABLEMANAGER_INCLUDED
 
+#include <Misc/CallbackList.h>
 #include <GL/gl.h>
 #include <GL/GLObject.h>
 #include <Abstract/DataSet.h>
@@ -60,6 +61,20 @@ class VariableManager:public GLObject
 		LUMINANCE_GREY,LUMINANCE_RED,LUMINANCE_YELLOW,LUMINANCE_GREEN,LUMINANCE_CYAN,LUMINANCE_BLUE,LUMINANCE_MAGENTA,
 		SATURATION_RED_CYAN,SATURATION_YELLOW_BLUE,SATURATION_GREEN_MAGENTA,SATURATION_CYAN_RED,SATURATION_BLUE_YELLOW,SATURATION_MAGENTA_GREEN,
 		RAINBOW
+		};
+	
+	struct PaletteChangedCallbackData:public Misc::CallbackData // Callback data structure when a scalar variable's palette is changed
+		{
+		/* Elements: */
+		public:
+		int scalarVariableIndex; // Index of the scalar variable whose palette changed
+		const PaletteEditor::Storage& newPalette; // The new palette
+		
+		/* Constructors and destructors: */
+		PaletteChangedCallbackData(int sScalarVariableIndex,const PaletteEditor::Storage& sNewPalette)
+			:scalarVariableIndex(sScalarVariableIndex),newPalette(sNewPalette)
+			{
+			}
 		};
 	
 	private:
@@ -115,8 +130,10 @@ class VariableManager:public GLObject
 	VectorVariable* vectorVariables; // Array of vector variables for the data set; initialized on demand
 	int currentScalarVariableIndex; // The index of the currently selected scalar variable
 	int currentVectorVariableIndex; // The index of the currently selected vector variable
+	Misc::CallbackList paletteChangedCallbacks; // List of callbacks to be called when a scalar variable's palette changes
 	
 	/* Private methods: */
+	void updateRenderColorMap(int scalarVariableIndex);
 	void prepareScalarVariable(int scalarVariableIndex);
 	void colorMapChangedCallback(Misc::CallbackData* cbData);
 	void savePaletteCallback(Misc::CallbackData* cbData);
@@ -145,6 +162,7 @@ class VariableManager:public GLObject
 		return dataSet->getScalarVariableName(scalarVariableIndex);
 		}
 	int getScalarVariable(const char* scalarVariableName) const; // Returns the index of the scalar variable of the given name
+	void setPalette(int scalarVariableIndex,PaletteEditor::Storage* newPalette); // Sets the color palette for the given scalar variable
 	const char* getVectorVariableName(int vectorVariableIndex) const // Returns the name of the given vector variable
 		{
 		return dataSet->getVectorVariableName(vectorVariableIndex);
@@ -182,6 +200,10 @@ class VariableManager:public GLObject
 	const VectorExtractor* getCurrentVectorExtractor(void) const // Returns the current vector extractor
 		{
 		return vectorVariables[currentVectorVariableIndex].vectorExtractor;
+		}
+	Misc::CallbackList& getPaletteChangedCallbacks(void) // Returns the list of callbacks called when a scalar variable's palette changes
+		{
+		return paletteChangedCallbacks;
 		}
 	void showColorBar(bool show); // Shows or hides the color bar dialog
 	GLMotif::PopupWindow* getColorBarDialog(void) // Returns the color bar dialog

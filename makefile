@@ -177,7 +177,7 @@ MODULES += $(MODULE_NAMES:%=$(call MODULENAME,%))
 ifneq ($(HAVE_COLLABORATION),0)
   # Build the shared visualization server-side collaboration plug-in
   SHAREDVISUALIZATION_NAME = SharedVisualization
-  SHAREDVISUALIZATION_VERSION = 5
+  SHAREDVISUALIZATION_VERSION = 6
   COLLABORATIONPLUGINS += $(call COLLABORATIONPLUGIN_SERVER_TARGET,SHAREDVISUALIZATION)
 endif
 
@@ -279,7 +279,8 @@ CONCRETE_SOURCES = Concrete/SphericalCoordinateTransformer.cpp \
                    Concrete/EarthRenderer.cpp \
                    Concrete/PointSet.cpp
 
-LIBVISUALIZER_SOURCES = $(ABSTRACT_SOURCES) \
+LIBVISUALIZER_SOURCES = LoadColorMap.cpp \
+                        $(ABSTRACT_SOURCES) \
                         $(TEMPLATIZED_SOURCES) \
                         $(WRAPPERS_SOURCES) \
                         $(CONCRETE_SOURCES) \

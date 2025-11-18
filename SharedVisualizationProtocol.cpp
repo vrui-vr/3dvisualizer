@@ -1,7 +1,7 @@
 /***********************************************************************
 SharedVisualizationProtocol - Common interface between a shared
 visualization server and a shared visualization client.
-Copyright (c) 2009-2023 Oliver Kreylos
+Copyright (c) 2009-2025 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -89,12 +89,14 @@ SharedVisualizationProtocol::SharedVisualizationProtocol(void)
 	serverMessageTypes[ConnectReply]=protocolTypes.createStructure(1,connectReplyMsgElements,sizeof(ConnectReplyMsg));
 	
 	/* ColorMapUpdatedMsg: */
-	DataType::StructureElement colorMapUpdatedNotificationMsgElements[]=
+	DataType::StructureElement colorMapUpdatedMsgElements[]=
 		{
-		{DataType::getAtomicType<VariableIndex>(),offsetof(ColorMapUpdatedNotificationMsg,scalarVariableIndex)},
-		{colorMapType,offsetof(ColorMapUpdatedNotificationMsg,colorMap)}
+		{DataType::getAtomicType<VariableIndex>(),offsetof(ColorMapUpdatedMsg,scalarVariableIndex)},
+		{colorMapType,offsetof(ColorMapUpdatedMsg,colorMap)}
 		};
-	serverMessageTypes[ColorMapUpdatedNotification]=protocolTypes.createStructure(2,colorMapUpdatedNotificationMsgElements,sizeof(ColorMapUpdatedNotificationMsg));
+	DataType::TypeID colorMapUpdatedMsgType=protocolTypes.createStructure(2,colorMapUpdatedMsgElements,sizeof(ColorMapUpdatedMsg));
+	clientMessageTypes[ColorMapUpdatedRequest]=colorMapUpdatedMsgType;
+	serverMessageTypes[ColorMapUpdatedNotification]=colorMapUpdatedMsgType;
 	}
 
 }

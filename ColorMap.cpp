@@ -1,7 +1,7 @@
 /***********************************************************************
 ColorMap - A widget to display color maps (one-dimensional transfer
 functions with RGB color and opacity).
-Copyright (c) 2005-2024 Oliver Kreylos
+Copyright (c) 2005-2025 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include "ColorMap.h"
 
 #include <stdio.h>
+#include <Misc/SelfDestructArray.h>
 #include <Misc/StdError.h>
 #include <Misc/File.h>
 #include <Math/Math.h>
@@ -34,31 +35,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <GLMotif/Container.h>
 
 namespace GLMotif {
-
-/**********************************
-Methods of class ColorMap::Storage:
-**********************************/
-
-ColorMap::Storage::Storage(const ColorMap::ControlPoint* first)
-	:numControlPoints(0),
-	 values(0),colors(0)
-	{
-	/* Count the number of control points in the list: */
-	for(const ControlPoint* cpPtr=first;cpPtr!=0;cpPtr=cpPtr->right)
-		++numControlPoints;
-	
-	/* Allocate the storage arrays: */
-	values=new double[numControlPoints];
-	colors=new ColorMapValue[numControlPoints];
-	
-	/* Copy the control points: */
-	int i=0;
-	for(const ControlPoint* cpPtr=first;cpPtr!=0;cpPtr=cpPtr->right,++i)
-		{
-		values[i]=cpPtr->value;
-		colors[i]=cpPtr->color;
-		}
-	}
 
 /*************************
 Methods of class ColorMap:
@@ -196,7 +172,7 @@ void ColorMap::draw(GLContextData& contextData) const
 	glBegin(GL_QUAD_STRIP);
 	for(const ControlPoint* cpPtr=&first;cpPtr!=0;cpPtr=cpPtr->right)
 		{
-		glColor(cpPtr->color);
+		glColor<4>(cpPtr->color.getComponents());
 		glVertex3f(cpPtr->x,y2,z);
 		glVertex3f(cpPtr->x,y1,z);
 		}
@@ -627,24 +603,40 @@ void ColorMap::exportColorMap(GLColorMap& glColorMap) const
 
 ColorMap::Storage* ColorMap::getColorMap(void) const
 	{
-	/* Return a new storage object: */
-	return new Storage(&first);
+	/* Count the number of control points in the list: */
+	unsigned int numControlPoints=0;
+	for(const ControlPoint* cpPtr=&first;cpPtr!=0;cpPtr=cpPtr->right)
+		++numControlPoints;
+	
+	/* Copy the control points into a temporary vector: */
+	std::vector<Storage::Entry> entries;
+	entries.reserve(numControlPoints);
+	for(const ControlPoint* cpPtr=&first;cpPtr!=0;cpPtr=cpPtr->right)
+		entries.push_back(Storage::Entry(cpPtr->value,cpPtr->color));
+	
+	/* Create the result color map: */
+	return new Storage(entries);
 	}
 
 void ColorMap::setColorMap(const ColorMap::Storage* newColorMap)
 	{
+	/* Check if the given color map is valid: */
+	if(newColorMap->getNumEntries()<2U)
+		throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Color map has fewer than two control points");
+	
 	/* Delete the current color map: */
 	deleteColorMap();
 	
 	/* Set the first control point: */
-	first.value=newColorMap->values[0];
-	first.color=newColorMap->colors[0];
+	unsigned int i=0;
+	first.value=newColorMap->getKey(i);
+	first.color=newColorMap->getColor(i);
 	
 	/* Create and set the intermediate control points: */
 	ControlPoint* leftPtr=&first;
-	for(int i=1;i<newColorMap->numControlPoints-1;++i)
+	for(++i;i<newColorMap->getNumEntries()-1;++i)
 		{
-		ControlPoint* cp=new ControlPoint(newColorMap->values[i],newColorMap->colors[i]);
+		ControlPoint* cp=new ControlPoint(newColorMap->getKey(i),newColorMap->getColor(i));
 		cp->left=leftPtr;
 		leftPtr->right=cp;
 		
@@ -652,8 +644,8 @@ void ColorMap::setColorMap(const ColorMap::Storage* newColorMap)
 		}
 	
 	/* Set the last control point: */
-	last.value=newColorMap->values[newColorMap->numControlPoints-1];
-	last.color=newColorMap->colors[newColorMap->numControlPoints-1];
+	last.value=newColorMap->getKey(i);
+	last.color=newColorMap->getColor(i);
 	last.left=leftPtr;
 	leftPtr->right=&last;
 	
@@ -816,64 +808,6 @@ void ColorMap::createColorMap(ColorMap::ColorMapCreationType colorMapType,const 
 			cs[i]->right=cs[i+1];
 			}
 		}
-	
-	/* Update all control points: */
-	updateControlPoints();
-	
-	/* Call the color map change callbacks: */
-	ColorMapChangedCallbackData cbData(this);
-	colorMapChangedCallbacks.call(&cbData);
-	}
-
-void ColorMap::createColorMap(const std::vector<ColorMap::ControlPoint>& controlPoints)
-	{
-	/* Check if the control point vector is valid: */
-	if(controlPoints.size()<2)
-		throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Control point vector has fewer than two control points");
-	for(std::vector<ColorMap::ControlPoint>::const_iterator cpIt=controlPoints.begin();cpIt!=controlPoints.end();++cpIt)
-		{
-		std::vector<ColorMap::ControlPoint>::const_iterator cpIt2=cpIt;
-		++cpIt2;
-		if(cpIt2!=controlPoints.end())
-			if(cpIt->value>cpIt2->value)
-				throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Control point vector has decreasing control point values");
-		}
-	
-	/* Delete the current color map: */
-	deleteColorMap();
-	
-	/* Copy all control points from the control point array: */
-	int numPointsSet=0;
-	for(std::vector<ColorMap::ControlPoint>::const_iterator cpIt=controlPoints.begin();cpIt!=controlPoints.end();++cpIt)
-		{
-		if(numPointsSet==0)
-			{
-			/* Set the first control point: */
-			first.value=cpIt->value;
-			first.color=cpIt->color;
-			}
-		else
-			{
-			if(numPointsSet>1)
-				{
-				/* Copy the last control point to an intermediate one: */
-				ControlPoint* newCp=new ControlPoint(last.value,last.color);
-				newCp->left=last.left;
-				newCp->left->right=newCp;
-				newCp->right=&last;
-				last.left=newCp;
-				}
-			
-			/* Set the last control point: */
-			last.value=cpIt->value;
-			last.color=cpIt->color;
-			}
-		++numPointsSet;
-		}
-	
-	/* Update the value range: */
-	valueRange.first=first.value;
-	valueRange.second=last.value;
 	
 	/* Update all control points: */
 	updateControlPoints();

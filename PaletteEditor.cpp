@@ -1,7 +1,7 @@
 /***********************************************************************
 PaletteEditor - Class to represent a GLMotif popup window to edit
 one-dimensional transfer functions with RGB color and opacity.
-Copyright (c) 2005-2019 Oliver Kreylos
+Copyright (c) 2005-2025 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -50,7 +50,7 @@ void PaletteEditor::selectedControlPointChangedCallback(Misc::CallbackData* cbDa
 		if(controlPointValue->hasFocus())
 			controlPointValue->setSelection(0,0);
 		GLMotif::ColorMap::ColorMapValue colorValue=colorMap->getSelectedControlPointColorValue();
-		colorPanel->setBackgroundColor(colorValue);
+		colorPanel->setBackgroundColor(GLMotif::Color(colorValue.getComponents()));
 		for(int i=0;i<4;++i)
 			colorSliders[i]->setValue(colorValue[i]);
 		}
@@ -94,7 +94,7 @@ void PaletteEditor::colorSliderValueChangedCallback(Misc::CallbackData* cbData)
 		newColor[i]=colorSliders[i]->getValue();
 	
 	/* Copy the new color value to the color panel and the selected control point: */
-	colorPanel->setBackgroundColor(newColor);
+	colorPanel->setBackgroundColor(GLMotif::Color(newColor.getComponents()));
 	colorMap->setSelectedControlPointColorValue(newColor);
 	}
 
@@ -224,11 +224,6 @@ void PaletteEditor::setPalette(const PaletteEditor::Storage* newPalette)
 void PaletteEditor::createPalette(PaletteEditor::ColorMapCreationType colorMapType,const PaletteEditor::ValueRange& newValueRange)
 	{
 	colorMap->createColorMap(colorMapType,newValueRange);
-	}
-
-void PaletteEditor::createPalette(const std::vector<GLMotif::ColorMap::ControlPoint>& controlPoints)
-	{
-	colorMap->createColorMap(controlPoints);
 	}
 
 void PaletteEditor::loadPalette(const char* paletteFileName,const PaletteEditor::ValueRange& newValueRange)

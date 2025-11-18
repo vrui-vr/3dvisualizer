@@ -66,6 +66,7 @@ class SharedVisualizationServer:public PluginServer,public SharedVisualizationPr
 		client->queueMessage(message.getBuffer());
 		}
 	MessageContinuation* connectRequestCallback(unsigned int messageId,unsigned int clientId,MessageContinuation* continuation);
+	MessageContinuation* colorMapUpdatedRequestCallback(unsigned int messageId,unsigned int clientId,MessageContinuation* continuation);
 	
 	/* Command interface methods: */
 	void clearDataCommandCallback(const char* argumentBegin,const char* argumentEnd);

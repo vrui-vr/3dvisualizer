@@ -2,7 +2,7 @@
 SharedVisualizationClient - Client for collaborative data exploration in
 spatially distributed VR environments, implemented as a plug-in of the
 Vrui remote collaboration infrastructure.
-Copyright (c) 2009-2023 Oliver Kreylos
+Copyright (c) 2009-2025 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -35,21 +35,23 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <Collaboration2/PluginClient.h>
 #include <Collaboration2/Plugins/KoinoniaClient.h>
 
+#include <Abstract/VariableManager.h>
 #include <Abstract/Module.h>
 #include <Abstract/Element.h>
+#include <PaletteEditor.h>
 
 #include "SharedVisualizationProtocol.h"
 
 /* Forward declarations: */
 namespace Collab {
 class MessageContinuation;
+class MessageReader;
 namespace Plugins {
 class KoinoniaClient;
 }
 }
 namespace Visualization {
 namespace Abstract {
-class VariableManager;
 class Algorithm;
 }
 }
@@ -100,6 +102,8 @@ class SharedVisualizationClient:public PluginClient,public SharedVisualizationPr
 	/* Elements: */
 	private:
 	Visualization::Abstract::VariableManager* variableManager; // Pointer to the variable manager
+	ColorMap** colorMaps; // Array of pointers to scalar variable color maps shared with the server
+	bool inSetPalette; // Flag if the client is currently updating a palette in the variable manager
 	Visualization::Abstract::Module* module; // Pointer to the visualization module
 	AlgorithmNameMap algorithmIndices; // Hash table from static algorithm name pointers to algorithm indices
 	ElementList* elementList; // Pointer to the list of extracted visualization elements
@@ -135,8 +139,11 @@ class SharedVisualizationClient:public PluginClient,public SharedVisualizationPr
 		else
 			client->queueServerMessage(message.getBuffer());
 		}
+	PaletteEditor::Storage* convertPalette(const ColorMap& colorMap); // Converts a protocol color map into a palette editor palette
+	void paletteChangedCallback(Visualization::Abstract::VariableManager::PaletteChangedCallbackData* cbData);
 	MessageContinuation* connectRejectCallback(unsigned int messageId,MessageContinuation* continuation);
 	MessageContinuation* connectReplyCallback(unsigned int messageId,MessageContinuation* continuation);
+	void colorMapUpdatedNotificationFrontendCallback(unsigned int messageId,MessageReader& message);
 	MessageContinuation* colorMapUpdatedNotificationCallback(unsigned int messageId,MessageContinuation* continuation);
 	static void* createElementFunction(KoinoniaClient* client,KoinoniaProtocol::NamespaceID namespaceId,DataType::TypeID type,void* userData);
 	void extractElementJobComplete(Threads::WorkerPool::JobFunction* job,SharedElement* sharedElement); // Called from main thread when an element extraction job is finished

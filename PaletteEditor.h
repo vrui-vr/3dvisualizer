@@ -1,7 +1,7 @@
 /***********************************************************************
 PaletteEditor - Class to represent a GLMotif popup window to edit
 one-dimensional transfer functions with RGB color and opacity.
-Copyright (c) 2005-2010 Oliver Kreylos
+Copyright (c) 2005-2025 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -92,7 +92,6 @@ class PaletteEditor:public GLMotif::PopupWindow
 	Storage* getPalette(void) const; // Returns the current palette
 	void setPalette(const Storage* newPalette); // Sets a new palette
 	void createPalette(ColorMapCreationType colorMapType,const ValueRange& newValueRange); // Creates a standard palette
-	void createPalette(const std::vector<GLMotif::ColorMap::ControlPoint>& controlPoints); // Creates a palette from the given color map control point vector
 	void loadPalette(const char* paletteFileName,const ValueRange& newValueRange); // Loads a palette from a palette file
 	void savePalette(const char* paletteFileName) const; // Saves the current palette to a palette file
 	Misc::CallbackList& getColorMapChangedCallbacks(void) // Returns list of color map change callbacks

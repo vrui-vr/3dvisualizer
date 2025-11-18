@@ -1,7 +1,7 @@
 /***********************************************************************
 VariableManager - Helper class to manage the scalar and vector variables
 that can be extracted from a data set.
-Copyright (c) 2008-2023 Oliver Kreylos
+Copyright (c) 2008-2025 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <stdio.h>
 #include <stdexcept>
 #include <Misc/CreateNumberedFileName.h>
+#include <Misc/MessageLogger.h>
 #include <GL/gl.h>
 #include <GL/GLContextData.h>
 #include <GL/GLColorMap.h>
@@ -39,6 +40,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include <ColorBar.h>
 #include <ColorMap.h>
+#include <LoadColorMap.h>
 
 namespace Visualization {
 
@@ -104,6 +106,29 @@ VariableManager::DataItem::~DataItem(void)
 Methods of class VariableManager:
 ********************************/
 
+void VariableManager::updateRenderColorMap(int scalarVariableIndex)
+	{
+	ScalarVariable& sv=scalarVariables[scalarVariableIndex];
+	
+	/* Sample the palette into a 256-entry color map: */
+	const int numEntries=256;
+	GLColorMap::Color colors[numEntries];
+	for(int i=0;i<numEntries;++i)
+		{
+		/* Calculate the map value for the color array entry: */
+		double value=double(i)*(sv.colorMapRange.second-sv.colorMapRange.first)/double(numEntries-1)+sv.colorMapRange.first;
+		
+		/* Sample the palette: */
+		PaletteEditor::Storage::Color color=sv.palette->map(value);
+		for(int j=0;j<4;++j)
+			colors[i][j]=color[j];
+		}
+	
+	/* Update the color map: */
+	sv.colorMap->setColors(numEntries,colors);
+	++sv.colorMapVersion;
+	}
+
 void VariableManager::prepareScalarVariable(int scalarVariableIndex)
 	{
 	ScalarVariable& sv=scalarVariables[scalarVariableIndex];
@@ -121,35 +146,82 @@ void VariableManager::prepareScalarVariable(int scalarVariableIndex)
 		sv.valueRange.second+=1.0;
 		}
 	
-	/* Create a 256-entry OpenGL color map for rendering: */
-	sv.colorMap=new GLColorMap(GLColorMap::GREYSCALE|GLColorMap::RAMP_ALPHA,1.0f,1.0f,sv.valueRange.first,sv.valueRange.second);
-	++sv.colorMapVersion;
+	/* Check if the scalar variable does not have a color map yet: */
+	if(sv.palette==0)
+		{
+		if(defaultColorMapName!=0)
+			{
+			try
+				{
+				/* Load the default palette: */
+				sv.palette=loadColorMap(defaultColorMapName,sv.valueRange);
+				}
+			catch(const std::runtime_error& err)
+				{
+				/* Notify the user: */
+				Misc::formattedUserError("Cannot load palette from file %s due to exception %s",defaultColorMapName,err.what());
+				
+				/* Return a default color map instead: */
+				sv.palette=createDefaultColorMap(sv.valueRange);
+				}
+			}
+		else
+			{
+			/* Create a default grayscale palette: */
+			sv.palette=createDefaultColorMap(sv.valueRange);
+			}
+		
+		/* Call the palette changed callbacks: */
+		{
+		PaletteChangedCallbackData cbData(scalarVariableIndex,*sv.palette);
+		paletteChangedCallbacks.call(&cbData);
+		}
+		}
 	
 	/* Initialize the color map range to the variable's full scalar range: */
 	sv.colorMapRange=sv.valueRange;
+	
+	/* Generate the rendering color map: */
+	sv.colorMap=new GLColorMap;
+	sv.colorMap->setScalarRange(sv.colorMapRange.first,sv.colorMapRange.second);
+	updateRenderColorMap(scalarVariableIndex);
 	}
 
 void VariableManager::colorMapChangedCallback(Misc::CallbackData* cbData)
 	{
-	/* Export the changed palette to the current color map: */
-	paletteEditor->exportColorMap(*scalarVariables[currentScalarVariableIndex].colorMap);
-	++scalarVariables[currentScalarVariableIndex].colorMapVersion;
+	ScalarVariable& sv=scalarVariables[currentScalarVariableIndex];
 	
-	Vrui::requestUpdate();
+	/* Retrieve the palette editor's new palette: */
+	delete sv.palette;
+	sv.palette=paletteEditor->getPalette();
+	
+	/* Update the rendering color map: */
+	updateRenderColorMap(currentScalarVariableIndex);
+	
+	/* Call the palette changed callbacks: */
+	{
+	PaletteChangedCallbackData cbData(currentScalarVariableIndex,*sv.palette);
+	paletteChangedCallbacks.call(&cbData);
+	}
 	}
 
 void VariableManager::savePaletteCallback(Misc::CallbackData* cbData)
 	{
 	if(Vrui::isHeadNode())
 		{
+		/* Generate a new file name: */
+		char numberedFileName[40];
+		Misc::createNumberedFileName("SavedPalette.pal",4,numberedFileName);
+		
 		try
 			{
-			char numberedFileName[40];
-			paletteEditor->savePalette(Misc::createNumberedFileName("SavedPalette.pal",4,numberedFileName));
+			/* Save the palette: */
+			paletteEditor->savePalette(numberedFileName);
 			}
-		catch(const std::runtime_error&)
+		catch(const std::runtime_error& err)
 			{
-			/* Ignore errors and carry on: */
+			/* Notify the user and carry on: */
+			Misc::formattedUserError("Cannot save palette to file %s due to exception %s",numberedFileName,err.what());
 			}
 		}
 	}
@@ -244,6 +316,27 @@ int VariableManager::getScalarVariable(const char* scalarVariableName) const
 	return -1;
 	}
 
+void VariableManager::setPalette(int scalarVariableIndex,PaletteEditor::Storage* newPalette)
+	{
+	if(scalarVariableIndex<0||scalarVariableIndex>=numScalarVariables)
+		return;
+	
+	/* Replace the current palette: */
+	ScalarVariable& sv=scalarVariables[scalarVariableIndex];
+	delete sv.palette;
+	sv.palette=newPalette;
+	
+	/* Update the rendering color map: */
+	updateRenderColorMap(scalarVariableIndex);
+	
+	/* Check if the updated scalar variable is the current scalar variable: */
+	if(scalarVariableIndex==currentScalarVariableIndex)
+		{
+		/* Update the palette editor: */
+		paletteEditor->setPalette(newPalette);
+		}
+	}
+
 int VariableManager::getVectorVariable(const char* vectorVariableName) const
 	{
 	for(int i=0;i<numVectorVariables;++i)
@@ -263,41 +356,11 @@ void VariableManager::setCurrentScalarVariable(int newCurrentScalarVariableIndex
 	if(sv.scalarExtractor==0)
 		prepareScalarVariable(newCurrentScalarVariableIndex);
 	
-	/* Save the palette editor's current palette: */
-	if(currentScalarVariableIndex>=0)
-		scalarVariables[currentScalarVariableIndex].palette=paletteEditor->getPalette();
-	
 	/* Update the current scalar variable: */
 	currentScalarVariableIndex=newCurrentScalarVariableIndex;
 	
-	if(sv.palette==0)
-		{
-		if(defaultColorMapName!=0)
-			{
-			/* Load the default palette: */
-			try
-				{
-				paletteEditor->loadPalette(defaultColorMapName,sv.valueRange);
-				}
-			catch(const std::runtime_error&)
-				{
-				/* Create a new palette: */
-				paletteEditor->createPalette(GLMotif::ColorMap::GREYSCALE,sv.valueRange);
-				}
-			}
-		else
-			{
-			/* Create a new palette: */
-			paletteEditor->createPalette(GLMotif::ColorMap::GREYSCALE,sv.valueRange);
-			}
-		}
-	else
-		{
-		/* Upload the previously stored palette: */
-		paletteEditor->setPalette(sv.palette);
-		delete sv.palette;
-		sv.palette=0;
-		}
+	/* Upload the scalar variable's palette into the palette editor: */
+	paletteEditor->setPalette(sv.palette);
 	
 	/* Update the palette editor's title: */
 	char title[256];
@@ -426,103 +489,99 @@ void VariableManager::createPalette(int newPaletteType)
 	{
 	/* Define local types: */
 	typedef GLMotif::ColorMap ColorMap;
-	typedef ColorMap::ValueRange ValueRange;
 	typedef ColorMap::ColorMapValue Color;
-	typedef ColorMap::ControlPoint ControlPoint;
+	typedef ColorMap::Storage::Entry MapEntry;
+	
+	ScalarVariable& sv=scalarVariables[currentScalarVariableIndex];
 	
 	/* Get the current color map's value range: */
-	const ValueRange& valueRange=paletteEditor->getColorMap()->getValueRange();
-	double o=valueRange.first;
-	double f=valueRange.second-o;
+	double o=sv.valueRange.first;
+	double f=sv.valueRange.second-o;
 	
-	/* Create a new control point vector for the current color map: */
-	std::vector<ControlPoint> controlPoints;
+	/* Create a new entry vector for the current color map: */
+	std::vector<MapEntry> entries;
 	bool createPalette=true;
 	switch(newPaletteType)
 		{
 		case LUMINANCE_GREY:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(0.0f,0.0f,0.0f,0.0f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(1.0f,1.0f,1.0f,1.0f)));
+			entries.push_back(MapEntry(o,Color(0.0f,0.0f,0.0f,0.0f)));
+			entries.push_back(MapEntry(o+f,Color(1.0f,1.0f,1.0f,1.0f)));
 			break;
 		
 		case LUMINANCE_RED:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(0.0f,0.0f,0.0f,0.0f)));
-			controlPoints.push_back(ControlPoint(o+f*0.5,Color(1.0f,0.287f,0.287f,0.5f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(1.0f,1.0f,1.0f,1.0f)));
+			entries.push_back(MapEntry(o,Color(0.0f,0.0f,0.0f,0.0f)));
+			entries.push_back(MapEntry(o+f*0.5,Color(1.0f,0.287f,0.287f,0.5f)));
+			entries.push_back(MapEntry(o+f,Color(1.0f,1.0f,1.0f,1.0f)));
 			break;
 		
 		case LUMINANCE_YELLOW:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(0.0f,0.0f,0.0f,0.0f)));
-			controlPoints.push_back(ControlPoint(o+f*0.5,Color(0.564f,0.564f,0.0f,0.5f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(1.0f,1.0f,1.0f,1.0f)));
+			entries.push_back(MapEntry(o,Color(0.0f,0.0f,0.0f,0.0f)));
+			entries.push_back(MapEntry(o+f*0.5,Color(0.564f,0.564f,0.0f,0.5f)));
+			entries.push_back(MapEntry(o+f,Color(1.0f,1.0f,1.0f,1.0f)));
 			break;
 		
 		case LUMINANCE_GREEN:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(0.0f,0.0f,0.0f,0.0f)));
-			controlPoints.push_back(ControlPoint(o+f*0.5,Color(0.0f,0.852f,0.0f,0.5f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(1.0f,1.0f,1.0f,1.0f)));
+			entries.push_back(MapEntry(o,Color(0.0f,0.0f,0.0f,0.0f)));
+			entries.push_back(MapEntry(o+f*0.5,Color(0.0f,0.852f,0.0f,0.5f)));
+			entries.push_back(MapEntry(o+f,Color(1.0f,1.0f,1.0f,1.0f)));
 			break;
 		
 		case LUMINANCE_CYAN:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(0.0f,0.0f,0.0f,0.0f)));
-			controlPoints.push_back(ControlPoint(o+f*0.5,Color(0.0f,0.713f,0.713f,0.5f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(1.0f,1.0f,1.0f,1.0f)));
+			entries.push_back(MapEntry(o,Color(0.0f,0.0f,0.0f,0.0f)));
+			entries.push_back(MapEntry(o+f*0.5,Color(0.0f,0.713f,0.713f,0.5f)));
+			entries.push_back(MapEntry(o+f,Color(1.0f,1.0f,1.0f,1.0f)));
 			break;
 		
 		case LUMINANCE_BLUE:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(0.0f,0.0f,0.0f,0.0f)));
-			controlPoints.push_back(ControlPoint(o+f*0.5,Color(0.436f,0.436f,1.0f,0.5f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(1.0f,1.0f,1.0f,1.0f)));
+			entries.push_back(MapEntry(o,Color(0.0f,0.0f,0.0f,0.0f)));
+			entries.push_back(MapEntry(o+f*0.5,Color(0.436f,0.436f,1.0f,0.5f)));
+			entries.push_back(MapEntry(o+f,Color(1.0f,1.0f,1.0f,1.0f)));
 			break;
 		
 		case LUMINANCE_MAGENTA:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(0.0f,0.0f,0.0f,0.0f)));
-			controlPoints.push_back(ControlPoint(o+f*0.5,Color(1.0f,0.148f,1.0f,0.5f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(1.0f,1.0f,1.0f,1.0f)));
+			entries.push_back(MapEntry(o,Color(0.0f,0.0f,0.0f,0.0f)));
+			entries.push_back(MapEntry(o+f*0.5,Color(1.0f,0.148f,1.0f,0.5f)));
+			entries.push_back(MapEntry(o+f,Color(1.0f,1.0f,1.0f,1.0f)));
 			break;
 		
 		case SATURATION_RED_CYAN:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(1.0f,0.287f,0.287f,0.0f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(0.0f,0.713f,0.713f,1.0f)));
+			entries.push_back(MapEntry(o,Color(1.0f,0.287f,0.287f,0.0f)));
+			entries.push_back(MapEntry(o+f,Color(0.0f,0.713f,0.713f,1.0f)));
 			break;
 		
 		case SATURATION_YELLOW_BLUE:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(0.564f,0.564f,0.0f,0.0f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(0.436f,0.436f,1.0f,1.0f)));
+			entries.push_back(MapEntry(o,Color(0.564f,0.564f,0.0f,0.0f)));
+			entries.push_back(MapEntry(o+f,Color(0.436f,0.436f,1.0f,1.0f)));
 			break;
 		
 		case SATURATION_GREEN_MAGENTA:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(0.0f,0.852f,0.0f,0.0f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(1.0f,0.148f,1.0f,1.0f)));
+			entries.push_back(MapEntry(o,Color(0.0f,0.852f,0.0f,0.0f)));
+			entries.push_back(MapEntry(o+f,Color(1.0f,0.148f,1.0f,1.0f)));
 			break;
 		
 		case SATURATION_CYAN_RED:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(0.0f,0.713f,0.713f,0.0f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(1.0f,0.287f,0.287f,1.0f)));
+			entries.push_back(MapEntry(o,Color(0.0f,0.713f,0.713f,0.0f)));
+			entries.push_back(MapEntry(o+f,Color(1.0f,0.287f,0.287f,1.0f)));
 			break;
 		
 		case SATURATION_BLUE_YELLOW:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(0.436f,0.436f,1.0f,0.0f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(0.564f,0.564f,0.0f,1.0f)));
+			entries.push_back(MapEntry(o,Color(0.436f,0.436f,1.0f,0.0f)));
+			entries.push_back(MapEntry(o+f,Color(0.564f,0.564f,0.0f,1.0f)));
 			break;
 		
 		case SATURATION_MAGENTA_GREEN:
-			controlPoints.push_back(ControlPoint(valueRange.first,Color(1.0f,0.148f,1.0f,0.0f)));
-			controlPoints.push_back(ControlPoint(valueRange.second,Color(0.0f,0.852f,0.0f,1.0f)));
+			entries.push_back(MapEntry(o,Color(1.0f,0.148f,1.0f,0.0f)));
+			entries.push_back(MapEntry(o+f,Color(0.0f,0.852f,0.0f,1.0f)));
 			break;
 		
 		case RAINBOW:
-			{
-			double o=valueRange.first;
-			double f=valueRange.second-o;
-			controlPoints.push_back(ControlPoint(o+f*(0.0/5.0),Color(1.0f,0.287f,0.287f,(0.0f/5.0f))));
-			controlPoints.push_back(ControlPoint(o+f*(1.0/5.0),Color(0.564f,0.564f,0.0f,(1.0f/5.0f))));
-			controlPoints.push_back(ControlPoint(o+f*(2.0/5.0),Color(0.0f,0.852f,0.0f,(2.0f/5.0f))));
-			controlPoints.push_back(ControlPoint(o+f*(3.0/5.0),Color(0.0f,0.713f,0.713f,(3.0f/5.0f))));
-			controlPoints.push_back(ControlPoint(o+f*(4.0/5.0),Color(0.436f,0.436f,1.0f,(4.0f/5.0f))));
-			controlPoints.push_back(ControlPoint(o+f*(5.0/5.0),Color(1.0f,0.148f,1.0f,(5.0f/5.0f))));
+			entries.push_back(MapEntry(o+f*(0.0/5.0),Color(1.0f,0.287f,0.287f,(0.0f/5.0f))));
+			entries.push_back(MapEntry(o+f*(1.0/5.0),Color(0.564f,0.564f,0.0f,(1.0f/5.0f))));
+			entries.push_back(MapEntry(o+f*(2.0/5.0),Color(0.0f,0.852f,0.0f,(2.0f/5.0f))));
+			entries.push_back(MapEntry(o+f*(3.0/5.0),Color(0.0f,0.713f,0.713f,(3.0f/5.0f))));
+			entries.push_back(MapEntry(o+f*(4.0/5.0),Color(0.436f,0.436f,1.0f,(4.0f/5.0f))));
+			entries.push_back(MapEntry(o+f*(5.0/5.0),Color(1.0f,0.148f,1.0f,(5.0f/5.0f))));
 			break;
-			}
 		
 		default:
 			createPalette=false;
@@ -531,16 +590,40 @@ void VariableManager::createPalette(int newPaletteType)
 	if(createPalette)
 		{
 		/* Create the new color map: */
-		paletteEditor->createPalette(controlPoints);
+		sv.palette=new PaletteEditor::Storage(entries);
+		updateRenderColorMap(currentScalarVariableIndex);
+		paletteEditor->setPalette(sv.palette);
 		
-		Vrui::requestUpdate();
+		/* Call the palette changed callbacks: */
+		{
+		PaletteChangedCallbackData cbData(currentScalarVariableIndex,*sv.palette);
+		paletteChangedCallbacks.call(&cbData);
+		}
 		}
 	}
 
 void VariableManager::loadPalette(const char* paletteFileName)
 	{
-	/* Load the given palette file: */
-	paletteEditor->loadPalette(paletteFileName,scalarVariables[currentScalarVariableIndex].valueRange);
+	ScalarVariable& sv=scalarVariables[currentScalarVariableIndex];
+	
+	try
+		{
+		/* Load the given color map: */
+		sv.palette=loadColorMap(paletteFileName,sv.valueRange);
+		updateRenderColorMap(currentScalarVariableIndex);
+		paletteEditor->setPalette(sv.palette);
+		
+		/* Call the palette changed callbacks: */
+		{
+		PaletteChangedCallbackData cbData(currentScalarVariableIndex,*sv.palette);
+		paletteChangedCallbacks.call(&cbData);
+		}
+		}
+	catch(const std::runtime_error& err)
+		{
+		/* Notify the user and carry on: */
+		Misc::formattedUserError("Cannot load palette from file %s due to exception %s",paletteFileName,err.what());
+		}
 	}
 
 void VariableManager::insertPaletteEditorControlPoint(double newControlPoint)
