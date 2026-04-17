@@ -181,3 +181,12 @@
 - Add installplugins target for collaboration plug-ins.
 
 3D Visualizer 1.22:
+- Bumped required Vrui version number to 15.0-001.
+- Bumped required Collaboration Infrastructure version to 10.5.
+- Adapted to API changes in Vrui and Collaboration Infrastructure.
+- Fixed creation of shader-based volume renderers; set step size and
+  transparency gamma read from creation parameters.
+- Added Abstract::Element::update() method to notify elements that their
+  parameters have changed.
+  - Implemented update() method in Wrappers::VolumeRenderer to set step
+    size and transparency gamma.

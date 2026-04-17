@@ -3,7 +3,7 @@ VolumeRenderer - Wrapper class for volume renderers as visualization
 elements.
 Part of the wrapper layer of the templatized visualization
 components.
-Copyright (c) 2005-2024 Oliver Kreylos
+Copyright (c) 2005-2026 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -115,6 +115,8 @@ VolumeRenderer<DataSetWrapperParam>::VolumeRenderer(
 	
 	/* Set the raycaster's parameters: */
 	renderer->setColorMap(variableManager->getColorMap(scalarVariableIndex));
+	renderer->setStepSize(myParameters->sliceFactor);
+	renderer->setTransparencyGamma(myParameters->transparencyGamma);
 	
 	#else
 	
@@ -253,6 +255,26 @@ VolumeRenderer<DataSetWrapperParam>::getSize(
 	
 	/* Return number of cells in the volume renderer: */
 	return size_t(renderer->getNumCells(0))*size_t(renderer->getNumCells(1))*size_t(renderer->getNumCells(2));
+	
+	#endif
+	}
+
+template <class DataSetWrapperParam>
+inline
+void
+VolumeRenderer<DataSetWrapperParam>::update(
+	void)
+	{
+	/* Get proper pointer to the parameter object: */
+	typename VolumeRendererExtractor<DataSetWrapper>::Parameters* myParameters=dynamic_cast<typename VolumeRendererExtractor<DataSetWrapper>::Parameters*>(getParameters());
+	if(myParameters==0)
+		throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Mismatching parameter object type");
+	
+	#if VISUALIZATION_CONFIG_USE_SHADERS
+	
+	/* Update the volume renderer: */
+	renderer->setStepSize(myParameters->sliceFactor);
+	renderer->setTransparencyGamma(myParameters->transparencyGamma);
 	
 	#endif
 	}

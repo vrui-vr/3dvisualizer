@@ -2,7 +2,7 @@
 SharedVisualizationClient - Client for collaborative data exploration in
 spatially distributed VR environments, implemented as a plug-in of the
 Vrui remote collaboration infrastructure.
-Copyright (c) 2009-2025 Oliver Kreylos
+Copyright (c) 2009-2026 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -146,7 +146,7 @@ class SharedVisualizationClient:public PluginClient,public SharedVisualizationPr
 	void colorMapUpdatedNotificationFrontendCallback(unsigned int messageId,MessageReader& message);
 	MessageContinuation* colorMapUpdatedNotificationCallback(unsigned int messageId,MessageContinuation* continuation);
 	static void* createElementFunction(KoinoniaClient* client,KoinoniaProtocol::NamespaceID namespaceId,DataType::TypeID type,void* userData);
-	void extractElementJobComplete(Threads::WorkerPool::JobFunction* job,SharedElement* sharedElement); // Called from main thread when an element extraction job is finished
+	void extractElementJobComplete(Threads::WorkerPool::JobFunction& job,SharedElement* sharedElement); // Called from main thread when an element extraction job is finished
 	void extractElementJob(int,SharedElement* sharedElement); // Job function to create a newly-arrived element, called from a background worker thread
 	static void elementCreatedCallback(KoinoniaClient* client,KoinoniaProtocol::NamespaceID namespaceId,KoinoniaProtocol::ObjectID objectId,void* object,void* userData);
 	static void elementReplacedCallback(KoinoniaClient* client,KoinoniaProtocol::NamespaceID namespaceId,KoinoniaProtocol::ObjectID objectId,KoinoniaProtocol::VersionNumber newVersion,void* object,void* userData);

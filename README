@@ -29,12 +29,12 @@ Science Foundation.
 Requirements
 ============
 
-3D Visualizer requires Vrui version 14.0 build 001 or newer. To read
+3D Visualizer requires Vrui version 15.0 build 001 or newer. To read
 images in PNG, JPEG, or TIFF formats, libpng, libjpeg, or libtiff have
 to be installed, respectively, and Vrui has to be configured with
 support for these image formats (see Vrui README file).
 To include collaboration functionality, 3D Visualizer requires the Vrui
-Collaboration Infrastructure version 10.3 or newer.
+Collaboration Infrastructure version 10.5 or newer.
 
 Installation Guide
 ==================

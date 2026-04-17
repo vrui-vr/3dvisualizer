@@ -2,7 +2,7 @@
 SharedVisualizationClient - Client for collaborative data exploration in
 spatially distributed VR environments, implemented as a plug-in of the
 Vrui remote collaboration infrastructure.
-Copyright (c) 2009-2025 Oliver Kreylos
+Copyright (c) 2009-2026 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -195,7 +195,7 @@ void* SharedVisualizationClient::createElementFunction(KoinoniaClient* client,Ko
 	return new SharedElement(thisPtr->elementTypeDictionary);
 	}
 
-void SharedVisualizationClient::extractElementJobComplete(Threads::WorkerPool::JobFunction* job,SharedVisualizationClient::SharedElement* sharedElement)
+void SharedVisualizationClient::extractElementJobComplete(Threads::WorkerPool::JobFunction& job,SharedVisualizationClient::SharedElement* sharedElement)
 	{
 	/* Check whether the element hasn't been destroyed already: */
 	if(!sharedElement->destroyed)
@@ -255,6 +255,7 @@ void SharedVisualizationClient::elementReplacedCallback(KoinoniaClient* client,K
 	
 	/* Update the shared element's parameters: */
 	sharedElement->element->getParameters()->read(sharedElement->parameters,thisPtr->variableManager);
+	sharedElement->element->update();
 	
 	/* Check if the element has already been added to the element list: */
 	if(sharedElement->element!=0)

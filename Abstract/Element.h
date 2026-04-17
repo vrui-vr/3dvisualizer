@@ -4,7 +4,7 @@ data sets. Elements use thread-safe reference counting for automatic
 garbage collection.
 Part of the abstract interface to the templatized visualization
 components.
-Copyright (c) 2005-2023 Oliver Kreylos
+Copyright (c) 2005-2026 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -114,6 +114,7 @@ class Element:public SceneGraph::GraphNode
 		}
 	virtual std::string getName(void) const =0; // Returns a descriptive name for the visualization element
 	virtual size_t getSize(void) const =0; // Returns some size value for the visualization element to compare it to other elements of the same type (number of triangles, points, etc.)
+	virtual void update(void); // Method to notify the element that its parameters have changed
 	virtual GLMotif::Widget* createSettingsDialog(GLMotif::WidgetManager* widgetManager); // Returns a new UI widget to change internal settings of the element
 	};
 

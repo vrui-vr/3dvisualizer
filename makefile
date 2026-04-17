@@ -25,7 +25,7 @@
 # matches the default Vrui installation; if Vrui's installation
 # directory was changed during Vrui's installation, the directory below
 # must be adapted.
-VRUI_MAKEDIR = /usr/local/share/Vrui-14.0/make
+VRUI_MAKEDIR ?= /usr/local/share/Vrui-15.0/make
 
 # Base installation directory for 3D Visualizer and its module
 # plug-ins. The module plug-ins cannot be moved from this location
@@ -45,8 +45,6 @@ INSTALLDIR = $(PROJECT_ROOT)
 USE_SHADERS = 1
 
 # List of default visualization modules:
-# MODULE_NAMES = AnalyzeFile
-
 MODULE_NAMES = SphericalASCIIFile \
                StructuredGridASCII \
                StructuredGridVTK \
@@ -65,10 +63,15 @@ MODULE_NAMES = SphericalASCIIFile \
                MultiChannelImageStack \
                AnalyzeFile
 
+# Add some legacy modules:
+MODULE_NAMES += ByteVolFile \
+                FloatVolFile \
+                MultiVolFile \
+                VecVolFile
+
 # List of other available modules:
 # Add any of these to the MODULE_NAMES list to build them
 UNSUPPORTED_MODULE_NAMES = AvsUcdAsciiFile \
-                           ByteVolFile \
                            SCTFile \
                            GaleFEMVectorFile \
                            GocadVoxetFile \
@@ -79,9 +82,6 @@ UNSUPPORTED_MODULE_NAMES = AvsUcdAsciiFile \
                            ReifSeismicTomography \
                            SeismicTomographyModel \
                            FloatGridFile \
-                           FloatVolFile \
-                           MultiVolFile \
-                           VecVolFile \
                            Kollmann0p9File \
                            MagaliSubductionFile \
                            MargareteSubductionFile \

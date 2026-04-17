@@ -3,7 +3,7 @@ VolumeRenderer - Wrapper class for volume renderers as visualization
 elements.
 Part of the wrapper layer of the templatized visualization
 components.
-Copyright (c) 2005-2023 Oliver Kreylos
+Copyright (c) 2005-2026 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -82,6 +82,7 @@ class VolumeRenderer:public Visualization::Abstract::Element
 	/* Methods from class Visualization::Abstract::Element: */
 	virtual std::string getName(void) const;
 	virtual size_t getSize(void) const;
+	virtual void update(void);
 	virtual GLMotif::Widget* createSettingsDialog(GLMotif::WidgetManager* widgetManager);
 	
 	/* New methods: */
