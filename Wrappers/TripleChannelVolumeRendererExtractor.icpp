@@ -2,7 +2,7 @@
 TripleChannelVolumeRendererExtractor - Wrapper class to map from the
 abstract visualization algorithm interface to a templatized volume
 renderer implementation.
-Copyright (c) 2009-2024 Oliver Kreylos
+Copyright (c) 2009-2026 Oliver Kreylos
 
 This file is part of the 3D Data Visualizer (Visualizer).
 
@@ -220,7 +220,7 @@ TripleChannelVolumeRendererExtractor<DataSetWrapperParam>::createSettingsDialog(
 	for(int channel=0;channel<3;++channel)
 		{
 		/* Create a label for the volume renderer channel: */
-		char name[40],label[20];
+		char name[64],label[64];
 		snprintf(name,sizeof(name),"ScalarVariableLabel%d",channel);
 		snprintf(label,sizeof(label),"Scalar Channel %d",channel+1);
 		new GLMotif::Label(name,settingsDialog,label);

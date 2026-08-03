@@ -190,3 +190,5 @@
   parameters have changed.
   - Implemented update() method in Wrappers::VolumeRenderer to set step
     size and transparency gamma.
+- Increased print buffer size for UI labels in
+  TripleChannelVolumeRendererExtractor::createSettingsDialog.
